@@ -142,8 +142,8 @@ class MainScene {
 			this.car.pos[1] - 20.0 * Math.sin(this.car.heading),
 		];
 
-		this.wallBumperCollision(this.car.frontBumper)
-			|| this.wallBumperCollision(this.car.backBumper);
+		this.wallBumperCollision(this.car.frontBumper);
+		this.wallBumperCollision(this.car.backBumper);
 
 		// The camera leads the car.
 		//this.car.camera = [this.car.pos[0] + 20.0 * vx, this.car.pos[1] + 20.0 * vy];
@@ -164,12 +164,8 @@ class MainScene {
 				const factor = (r - d) / d;
 				this.car.pos[0] += dx * factor;
 				this.car.pos[1] += dy * factor;
-
-				// Only hit one wall per frame.
-				return false;
 			}
 		}
-		return true;
 	}
 
 	render() {
