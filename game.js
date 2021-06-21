@@ -243,10 +243,13 @@ class MainScene {
 		ctx.closePath();
 		ctx.fillStyle = "rgb(180, 0, 0)";
 		ctx.fill();
-		ctx.fillStyle = "black";
+		ctx.strokeStyle = "black";
+		ctx.lineWidth = 1.0;
 		ctx.stroke();
 
 		// Draw control area.
+		ctx.strokeStyle = "black";
+		ctx.lineWidth = 1.0;
 		ctx.beginPath();
 		ctx.rect(
 			0.5 * (canvas.width - CONTROL_AREA_WIDTH),
@@ -256,7 +259,6 @@ class MainScene {
 		);
 		ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
 		ctx.fill();
-		ctx.fillStyle = "black";
 		ctx.stroke();
 		ctx.beginPath();
 		ctx.fillStyle = "black";
@@ -274,17 +276,13 @@ class MainScene {
 		for (let i = 0; i < this.trackPoints.length; ++i) {
 			const start = this.trackPoints[i];
 			const end = this.trackPoints[(i + 1) % this.trackPoints.length];
-			const angle = Math.atan2(end.y - start.y, end.x - start.x) + 0.5 * Math.PI;
-			const dx = radius * Math.cos(angle);
-			const dy = radius * Math.sin(angle);
 
 			ctx.beginPath();
-			ctx.moveTo(start.x - dx, start.y - dy);
-			ctx.lineTo(start.x + dx, start.y + dy);
-			ctx.lineTo(end.x + dx, end.y + dy);
-			ctx.lineTo(end.x - dx, end.y - dy);
-			ctx.closePath();
-			ctx.fill();
+			ctx.moveTo(start.x, start.y);
+			ctx.lineTo(end.x, end.y);
+			ctx.lineWidth = 2 * radius;
+			ctx.strokeStyle = style;
+			ctx.stroke();
 
 			ctx.beginPath();
 			ctx.ellipse(
