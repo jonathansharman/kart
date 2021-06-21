@@ -7,7 +7,7 @@ const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
 const ACCELERATION = 0.05;
-const ON_ROAD_DRAG = 0.015;
+const ON_ROAD_DRAG = 0.01;
 const OFF_ROAD_DRAG = 0.03;
 const WALL_BOUNCE_LOSS = 0.3;
 
@@ -21,7 +21,8 @@ const TERRAIN_CELL_WIDTH = 10;
 const TERRAIN_CELL_COLS = Math.floor(canvas.width / TERRAIN_CELL_WIDTH);
 const TERRAIN_CELL_ROWS = Math.floor(canvas.height / TERRAIN_CELL_WIDTH);
 
-const TRACK_RADIUS = 40.0;
+const TRACK_RADIUS = 50.0;
+const TRACK_BORDER = 2.0;
 
 const CONTROL_AREA_WIDTH = 400.0;
 const CONTROL_AREA_HEIGHT = 300.0;
@@ -70,6 +71,10 @@ class MainScene {
 		this.trackPoints = [
 			new Vec2(100, 100),
 			new Vec2(100, 668),
+			new Vec2(200, 668),
+			new Vec2(422, 568),
+			new Vec2(602, 568),
+			new Vec2(824, 668),
 			new Vec2(924, 668),
 			new Vec2(924, 100),
 		];
@@ -131,7 +136,7 @@ class MainScene {
 		// Steering
 		this.car.steering = MAX_STEERING_ANGLE * (rightSteering - leftSteering);
 		// Change in heading
-		this.car.heading += this.car.steering * this.car.speed / 35.0;
+		this.car.heading += this.car.steering * this.car.speed / 50.0;
 
 		const vx = this.car.speed * Math.cos(this.car.heading);
 		const vy = this.car.speed * Math.sin(this.car.heading);
@@ -162,8 +167,8 @@ class MainScene {
 		this.wallBumperCollision(this.car.backBumper);
 
 		// The camera leads the car.
-		//this.car.camera = [this.car.x + 20.0 * vx, this.car.y + 20.0 * vy];
-		//this.car.camera = [this.car.x, this.car.y];
+		//this.cameraPos = new Vec2(this.car.pos.x + 20.0 * vx, this.car.pos.y + 20.0 * vy);
+		//this.cameraPos = this.car.pos;
 	}
 
 	offRoad() {
@@ -203,33 +208,8 @@ class MainScene {
 		const x = this.car.pos.x - this.cameraPos.x;
 		const y = this.car.pos.y - this.cameraPos.y;
 
-		// Draw track.
-		for (let i = 0; i < this.trackPoints.length; ++i) {
-			const start = this.trackPoints[i];
-			const end = this.trackPoints[(i + 1) % this.trackPoints.length];
-			const angle = Math.atan2(end.y - start.y, end.x - start.x) + 0.5 * Math.PI;
-			const dx = TRACK_RADIUS * Math.cos(angle);
-			const dy = TRACK_RADIUS * Math.sin(angle);
-
-			ctx.fillStyle = "rgb(60, 60, 60)";
-
-			ctx.beginPath();
-			ctx.moveTo(start.x - dx, start.y - dy);
-			ctx.lineTo(start.x + dx, start.y + dy);
-			ctx.lineTo(end.x + dx, end.y + dy);
-			ctx.lineTo(end.x - dx, end.y - dy);
-			ctx.closePath();
-			ctx.fill();
-
-			ctx.beginPath();
-			ctx.ellipse(
-				start.x, start.y,
-				TRACK_RADIUS, TRACK_RADIUS,
-				0.0,
-				0.0, 2.0 * Math.PI,
-			);
-			ctx.fill();
-		}
+		this.drawTrack(TRACK_RADIUS, "black");
+		this.drawTrack(TRACK_RADIUS - TRACK_BORDER, "rgb(60, 60, 60)");
 
 		// Draw walls.
 		for (const wall of this.walls) {
@@ -287,6 +267,35 @@ class MainScene {
 			CONTROL_AREA_HEIGHT,
 		);
 		ctx.stroke();
+	}
+
+	drawTrack(radius, style) {
+		ctx.fillStyle = style;
+		for (let i = 0; i < this.trackPoints.length; ++i) {
+			const start = this.trackPoints[i];
+			const end = this.trackPoints[(i + 1) % this.trackPoints.length];
+			const angle = Math.atan2(end.y - start.y, end.x - start.x) + 0.5 * Math.PI;
+			const dx = radius * Math.cos(angle);
+			const dy = radius * Math.sin(angle);
+
+			ctx.beginPath();
+			ctx.moveTo(start.x - dx, start.y - dy);
+			ctx.lineTo(start.x + dx, start.y + dy);
+			ctx.lineTo(end.x + dx, end.y + dy);
+			ctx.lineTo(end.x - dx, end.y - dy);
+			ctx.closePath();
+			ctx.fill();
+
+			ctx.beginPath();
+			ctx.ellipse(
+				start.x, start.y,
+				radius, radius,
+				0.0,
+				0.0, 2.0 * Math.PI,
+			);
+			ctx.fill();
+		}
+
 	}
 }
 
