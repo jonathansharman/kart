@@ -13,4 +13,3 @@ jobs:
           user-name: "Jonathan Sharman"
           user-email: "jonathan.sharman@gmail.com"
           message: "Automatically built TypeScript"
-          directories: ./, path/to/folder/
