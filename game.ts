@@ -1,9 +1,7 @@
-"use strict";
-
 const FPS = 60.0;
 const MS_PER_FRAME = 1000.0 / FPS;
 
-const canvas = document.getElementById("canvas");
+const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d");
 
 const ACCELERATION = 0.05;
@@ -31,7 +29,7 @@ const CONTROL_AREA_RIGHT = CONTROL_AREA_LEFT + CONTROL_AREA_WIDTH;
 const CONTROL_AREA_TOP = 0.5 * (canvas.height - CONTROL_AREA_HEIGHT);
 const CONTROL_AREA_BOTTOM = CONTROL_AREA_TOP + CONTROL_AREA_HEIGHT;
 
-const DEAD_AREA_WIDTH = 100.0;
+const DEAD_AREA_WIDTH = 75.0;
 const DEAD_AREA_LEFT = 0.5 * (canvas.width - DEAD_AREA_WIDTH);
 const DEAD_AREA_RIGHT = DEAD_AREA_LEFT + DEAD_AREA_WIDTH;
 
@@ -40,6 +38,9 @@ const STEERING_WIDTH = 0.5 * (CONTROL_AREA_WIDTH - DEAD_AREA_WIDTH);
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
 class Bumper {
+	public radius: number;
+	public pos: Vec2;
+
 	constructor(radius, pos = new Vec2(0.0, 0.0)) {
 		this.radius = radius;
 		this.pos = pos;
@@ -47,6 +48,14 @@ class Bumper {
 }
 
 class Car {
+	public pos: Vec2;
+	public speed: number;
+	public heading: number;
+	public steering: number;
+
+	public frontBumper: Bumper;
+	public backBumper: Bumper;
+
 	constructor() {
 		this.pos = new Vec2(0.0, 0.0);
 		this.speed = 0.0;
@@ -59,6 +68,19 @@ class Car {
 }
 
 class MainScene {
+	public mousePos: Vec2;
+	public brake: boolean;
+	public gas: boolean;
+
+	private cameraPos: Vec2;
+
+	private car: Car;
+
+	private trackPoints: Array<Vec2>;
+
+	private walls: Array<Bumper>;
+	private wallBuckets: Array<Array<Bumper>>;
+
 	constructor() {
 		this.mousePos = new Vec2(0.0, 0.0);
 		this.brake = false;
