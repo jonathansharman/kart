@@ -7,27 +7,27 @@ class Vec2 {
 		this.y = y;
 	}
 
-	length2() {
+	length2(): number {
 		return this.x * this.x + this.y * this.y;
 	}
 
-	length() {
+	length(): number {
 		return Math.sqrt(this.length2());
 	}
 
-	plus(that) {
+	plus(that: Vec2): Vec2 {
 		return new Vec2(this.x + that.x, this.y + that.y);
 	}
 
-	minus(that) {
+	minus(that: Vec2): Vec2 {
 		return new Vec2(this.x - that.x, this.y - that.y);
 	}
 
-	times(t) {
+	times(t: number): Vec2 {
 		return new Vec2(t * this.x, t * this.y);
 	}
 
-	dot(that) {
+	dot(that: Vec2): number {
 		return this.x * that.x + this.y * that.y;
 	}
 }

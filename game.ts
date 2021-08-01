@@ -35,13 +35,13 @@ const DEAD_AREA_RIGHT = DEAD_AREA_LEFT + DEAD_AREA_WIDTH;
 
 const STEERING_WIDTH = 0.5 * (CONTROL_AREA_WIDTH - DEAD_AREA_WIDTH);
 
-const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 
 class Bumper {
 	public radius: number;
 	public pos: Vec2;
 
-	constructor(radius, pos = new Vec2(0.0, 0.0)) {
+	constructor(radius: number, pos = new Vec2(0.0, 0.0)) {
 		this.radius = radius;
 		this.pos = pos;
 	}
@@ -104,7 +104,7 @@ class MainScene {
 		this.addWalls();
 	}
 
-	addWalls() {
+	addWalls(): void {
 		this.walls = [];
 		this.wallBuckets = [];
 		for (let i = 0; i < COLLISION_BUCKET_COLS * COLLISION_BUCKET_ROWS; ++i) {
@@ -113,16 +113,16 @@ class MainScene {
 		this.addWall(new Bumper(15.0, new Vec2(0.5 * canvas.width, 0.5 * canvas.height)));
 	}
 
-	addWall(wall) {
+	addWall(wall: Bumper): void {
 		const col = Math.floor(wall.pos.x / COLLISION_BUCKET_WIDTH);
 		const row = Math.floor(wall.pos.y / COLLISION_BUCKET_WIDTH);
 		this.walls.push(wall);
 		this.wallBuckets[row * COLLISION_BUCKET_COLS + col].push(wall);
 	}
 
-	wallsNear(x, y) {
-		const centerCol = Math.floor(x / COLLISION_BUCKET_WIDTH);
-		const centerRow = Math.floor(y / COLLISION_BUCKET_WIDTH);
+	wallsNear(pos: Vec2): Array<Bumper> {
+		const centerCol = Math.floor(pos.x / COLLISION_BUCKET_WIDTH);
+		const centerRow = Math.floor(pos.y / COLLISION_BUCKET_WIDTH);
 		let nearbyWalls = [];
 		for (let row = centerRow - 1; row <= centerRow + 1; ++row) {
 			if (row < 0 || COLLISION_BUCKET_ROWS <= row) {
@@ -138,7 +138,7 @@ class MainScene {
 		return nearbyWalls;
 	}
 
-	update() {
+	update(): void {
 		// Left steering: 0 (right) to 1 (left)
 		const leftSteering = clamp((DEAD_AREA_LEFT - this.mousePos.x) / STEERING_WIDTH, 0.0, 1.0);
 		// Right steering: 0 (left) to 1 (right)
@@ -193,7 +193,7 @@ class MainScene {
 		//this.cameraPos = this.car.pos;
 	}
 
-	offRoad() {
+	offRoad(): boolean {
 		for (let i = 0; i < this.trackPoints.length; ++i) {
 			const start = this.trackPoints[i];
 			const end = this.trackPoints[(i + 1) % this.trackPoints.length];
@@ -204,8 +204,8 @@ class MainScene {
 		return true;
 	}
 
-	wallBumperCollision(bumper) {
-		for (let wall of this.wallsNear(bumper.pos.x, bumper.pos.y)) {
+	wallBumperCollision(bumper: Bumper): void {
+		for (let wall of this.wallsNear(bumper.pos)) {
 			const r = bumper.radius + wall.radius;
 			const dx = bumper.pos.x - wall.pos.x;
 			const dy = bumper.pos.y - wall.pos.y;
@@ -221,7 +221,7 @@ class MainScene {
 		}
 	}
 
-	render() {
+	render(): void {
 		ctx.fillStyle = "rgb(30, 100, 40)";
 		ctx.beginPath();
 		ctx.rect(0, 0, canvas.width, canvas.height);
@@ -293,7 +293,7 @@ class MainScene {
 		ctx.stroke();
 	}
 
-	drawTrack(radius, style) {
+	drawTrack(radius, style): void {
 		ctx.fillStyle = style;
 		for (let i = 0; i < this.trackPoints.length; ++i) {
 			const start = this.trackPoints[i];
@@ -319,8 +319,8 @@ class MainScene {
 	}
 }
 
-// The square of the shortest distance from point p to the line segment (q, r).
-function pointSegmentDistance2(p, q, r) {
+// The square of the shortest distance from p to the line segment (q, r).
+function pointSegmentDistance2(p: Vec2, q: Vec2, r: Vec2): number {
 	if (q === r) {
 		return p.minus(q).length2();
 	}
@@ -328,7 +328,7 @@ function pointSegmentDistance2(p, q, r) {
 	return p.minus(q.plus(r.minus(q).times(t))).length2();
 }
 
-function drawWheel(pos, angle, radius, angleOffset) {
+function drawWheel(pos: Vec2, angle: number, radius: number, angleOffset: number) {
 	ctx.fillStyle = "black";
 	ctx.beginPath();
 	ctx.moveTo(
@@ -351,7 +351,7 @@ function drawWheel(pos, angle, radius, angleOffset) {
 	ctx.fill();
 }
 
-function drawBumper(bumper) {
+function drawBumper(bumper): void {
 	ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
 	ctx.beginPath();
 	ctx.ellipse(
@@ -365,13 +365,13 @@ function drawBumper(bumper) {
 
 const mainScene = new MainScene();
 
-window.onmousemove = (event) => {
+window.onmousemove = (event: MouseEvent) => {
 	const rect = canvas.getBoundingClientRect();
 	mainScene.mousePos.x = event.clientX - rect.left;
 	mainScene.mousePos.y = event.clientY - rect.top;
 };
 
-window.onmousedown = (event) => {
+window.onmousedown = (event: MouseEvent) => {
 	switch (event.button) {
 		case 0: // Left button
 			mainScene.gas = true;
@@ -382,7 +382,7 @@ window.onmousedown = (event) => {
 	}
 };
 
-window.onmouseup = (event) => {
+window.onmouseup = (event: MouseEvent) => {
 	event.preventDefault();
 	switch (event.button) {
 		case 0: // Left button
@@ -394,7 +394,7 @@ window.onmouseup = (event) => {
 	}
 };
 
-window.onkeydown = (event) => {
+window.onkeydown = (event: KeyboardEvent) => {
 	switch (event.code) {
 		case "Digit1":
 			mainScene.brake = true;
@@ -405,7 +405,7 @@ window.onkeydown = (event) => {
 	}
 };
 
-window.onkeyup = (event) => {
+window.onkeyup = (event: KeyboardEvent) => {
 	event.preventDefault();
 	switch (event.code) {
 		case "Digit1":
