@@ -22,6 +22,8 @@ const TERRAIN_CELL_ROWS = Math.floor(canvas.height / TERRAIN_CELL_WIDTH);
 const TRACK_RADIUS = 50.0;
 const TRACK_BORDER = 2.0;
 
+// Axis control scheme constants
+
 const CONTROL_AREA_WIDTH = 400.0;
 const CONTROL_AREA_HEIGHT = 300.0;
 const CONTROL_AREA_LEFT = 0.5 * (canvas.width - CONTROL_AREA_WIDTH);
@@ -35,7 +37,16 @@ const DEAD_AREA_RIGHT = DEAD_AREA_LEFT + DEAD_AREA_WIDTH;
 
 const STEERING_WIDTH = 0.5 * (CONTROL_AREA_WIDTH - DEAD_AREA_WIDTH);
 
+// Follow control scheme constants
+
+const MAX_SPEED_DISTANCE = 300.0;
+
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
+
+enum ControlScheme {
+	Axes,
+	Follow,
+}
 
 class Bumper {
 	public radius: number;
@@ -68,6 +79,7 @@ class Car {
 }
 
 class MainScene {
+	public controlScheme: ControlScheme;
 	public mousePos: Vec2;
 	public brake: boolean;
 	public gas: boolean;
@@ -82,6 +94,7 @@ class MainScene {
 	private wallBuckets: Array<Array<Bumper>>;
 
 	constructor() {
+		this.controlScheme = ControlScheme.Follow;
 		this.mousePos = new Vec2(0.0, 0.0);
 		this.brake = false;
 		this.gas = false;
@@ -139,12 +152,26 @@ class MainScene {
 	}
 
 	update(): void {
-		// Left steering: 0 (right) to 1 (left)
-		const leftSteering = clamp((DEAD_AREA_LEFT - this.mousePos.x) / STEERING_WIDTH, 0.0, 1.0);
-		// Right steering: 0 (left) to 1 (right)
-		const rightSteering = clamp((this.mousePos.x - DEAD_AREA_RIGHT) / STEERING_WIDTH, 0.0, 1.0);
-		// Throttle: 0 (bottom) to 1 (top)
-		const throttle = clamp((CONTROL_AREA_BOTTOM - this.mousePos.y) / CONTROL_AREA_HEIGHT, 0.0, 1.0);
+		let throttle: number;
+		switch (this.controlScheme) {
+			case ControlScheme.Axes:
+				// Left steering: 0 (right) to 1 (left)
+				const leftSteering = clamp((DEAD_AREA_LEFT - this.mousePos.x) / STEERING_WIDTH, 0.0, 1.0);
+				// Right steering: 0 (left) to 1 (right)
+				const rightSteering = clamp((this.mousePos.x - DEAD_AREA_RIGHT) / STEERING_WIDTH, 0.0, 1.0);
+				// Throttle: 0 (bottom) to 1 (top)
+				throttle = clamp((CONTROL_AREA_BOTTOM - this.mousePos.y) / CONTROL_AREA_HEIGHT, 0.0, 1.0);
+				// Steering
+				this.car.steering = MAX_STEERING_ANGLE * (rightSteering - leftSteering);
+				break;
+			case ControlScheme.Follow:
+				const offset = this.mousePos.minus(this.car.pos);
+				const angle = Math.atan2(offset.y, offset.x);
+				const distance = offset.length();
+				throttle = Math.min(MAX_SPEED_DISTANCE, distance) / MAX_SPEED_DISTANCE;
+				this.car.steering = clamp(angleDifference(angle, this.car.heading), -MAX_STEERING_ANGLE, MAX_STEERING_ANGLE);
+				break;
+		}
 		// Gas and brake
 		if (this.brake) {
 			this.car.speed -= ACCELERATION * (1.0 - throttle);
@@ -152,13 +179,12 @@ class MainScene {
 		if (this.gas) {
 			this.car.speed += ACCELERATION * throttle;
 		}
+
 		// Drag
 		let drag = this.offRoad() ? OFF_ROAD_DRAG : ON_ROAD_DRAG;
 		this.car.speed -= drag * this.car.speed;
-		// Steering
-		this.car.steering = MAX_STEERING_ANGLE * (rightSteering - leftSteering);
 		// Change in heading
-		this.car.heading += this.car.steering * this.car.speed / 50.0;
+		this.car.heading = (this.car.heading + this.car.steering * this.car.speed / 50.0) % (2 * Math.PI);
 
 		const vx = this.car.speed * Math.cos(this.car.heading);
 		const vy = this.car.speed * Math.sin(this.car.heading);
@@ -317,6 +343,11 @@ class MainScene {
 		}
 
 	}
+}
+
+// The smallest angle equivalent to angle1 - angle2.
+function angleDifference(angle1: number, angle2: number): number {
+	return (angle1 - angle2 + Math.PI) % (2.0 * Math.PI) - Math.PI;
 }
 
 // The square of the shortest distance from p to the line segment (q, r).
