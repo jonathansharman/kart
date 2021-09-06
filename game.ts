@@ -1,5 +1,5 @@
-const FPS = 60.0;
-const MS_PER_FRAME = 1000.0 / FPS;
+const UPDATES_PER_SEC = 60.0;
+const MS_PER_UPDATE = 1000.0 / UPDATES_PER_SEC;
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d");
@@ -247,7 +247,7 @@ class MainScene {
 		}
 	}
 
-	render(): void {
+	draw(_timestamp: DOMHighResTimeStamp): void {
 		ctx.fillStyle = "rgb(30, 100, 40)";
 		ctx.beginPath();
 		ctx.rect(0, 0, canvas.width, canvas.height);
@@ -317,6 +317,10 @@ class MainScene {
 			CONTROL_AREA_HEIGHT,
 		);
 		ctx.stroke();
+
+		window.requestAnimationFrame((timestamp: DOMHighResTimeStamp) => {
+			this.draw(timestamp);
+		});
 	}
 
 	drawTrack(radius, style): void {
@@ -448,9 +452,15 @@ window.onkeyup = (event: KeyboardEvent) => {
 	}
 };
 
+// Disable context menu on right-click.
 window.oncontextmenu = () => false;
 
+// Update loop
 window.setInterval(() => {
 	mainScene.update();
-	mainScene.render();
-}, MS_PER_FRAME);
+}, MS_PER_UPDATE);
+
+// Render loop
+window.requestAnimationFrame((timestamp: DOMHighResTimeStamp) => {
+	mainScene.draw(timestamp);
+});

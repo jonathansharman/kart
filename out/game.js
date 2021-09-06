@@ -1,5 +1,5 @@
-var FPS = 60.0;
-var MS_PER_FRAME = 1000.0 / FPS;
+var UPDATES_PER_SEC = 60.0;
+var MS_PER_UPDATE = 1000.0 / UPDATES_PER_SEC;
 var canvas = document.getElementById("canvas");
 var ctx = canvas.getContext("2d");
 var ACCELERATION = 0.05;
@@ -189,7 +189,8 @@ var MainScene = /** @class */ (function () {
             }
         }
     };
-    MainScene.prototype.render = function () {
+    MainScene.prototype.draw = function (_timestamp) {
+        var _this = this;
         ctx.fillStyle = "rgb(30, 100, 40)";
         ctx.beginPath();
         ctx.rect(0, 0, canvas.width, canvas.height);
@@ -242,6 +243,9 @@ var MainScene = /** @class */ (function () {
         ctx.fillStyle = "black";
         ctx.rect(0.5 * (canvas.width - DEAD_AREA_WIDTH), 0.5 * (canvas.height - CONTROL_AREA_HEIGHT), DEAD_AREA_WIDTH, CONTROL_AREA_HEIGHT);
         ctx.stroke();
+        window.requestAnimationFrame(function (timestamp) {
+            _this.draw(timestamp);
+        });
     };
     MainScene.prototype.drawTrack = function (radius, style) {
         ctx.fillStyle = style;
@@ -337,8 +341,13 @@ window.onkeyup = function (event) {
             return false;
     }
 };
+// Disable context menu on right-click.
 window.oncontextmenu = function () { return false; };
+// Update loop
 window.setInterval(function () {
     mainScene.update();
-    mainScene.render();
-}, MS_PER_FRAME);
+}, MS_PER_UPDATE);
+// Render loop
+window.requestAnimationFrame(function (timestamp) {
+    mainScene.draw(timestamp);
+});
