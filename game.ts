@@ -41,11 +41,9 @@ const STEERING_WIDTH = 0.5 * (CONTROL_AREA_WIDTH - DEAD_AREA_WIDTH);
 
 const MAX_SPEED_DISTANCE = 300.0;
 
-const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
-
 enum ControlScheme {
-	Axes,
-	Follow,
+	MouseAxes,
+	MouseFollow,
 }
 
 class Bumper {
@@ -61,7 +59,7 @@ class Bumper {
 class Car {
 	public pos: Vec2;
 	public speed: number;
-	public heading: number;
+	public heading: Angle;
 	public steering: number;
 
 	public frontBumper: Bumper;
@@ -70,7 +68,7 @@ class Car {
 	constructor() {
 		this.pos = new Vec2(0.0, 0.0);
 		this.speed = 0.0;
-		this.heading = 0.0;
+		this.heading = new Angle(0.0);
 		this.steering = 0.0;
 
 		this.frontBumper = new Bumper(15.0);
@@ -94,7 +92,7 @@ class MainScene {
 	private wallBuckets: Array<Array<Bumper>>;
 
 	constructor() {
-		this.controlScheme = ControlScheme.Follow;
+		this.controlScheme = ControlScheme.MouseFollow;
 		this.mousePos = new Vec2(0.0, 0.0);
 		this.brake = false;
 		this.gas = false;
@@ -154,7 +152,7 @@ class MainScene {
 	update(): void {
 		let throttle: number;
 		switch (this.controlScheme) {
-			case ControlScheme.Axes:
+			case ControlScheme.MouseAxes:
 				// Left steering: 0 (right) to 1 (left)
 				const leftSteering = clamp((DEAD_AREA_LEFT - this.mousePos.x) / STEERING_WIDTH, 0.0, 1.0);
 				// Right steering: 0 (left) to 1 (right)
@@ -164,12 +162,16 @@ class MainScene {
 				// Steering
 				this.car.steering = MAX_STEERING_ANGLE * (rightSteering - leftSteering);
 				break;
-			case ControlScheme.Follow:
+			case ControlScheme.MouseFollow:
 				const offset = this.mousePos.minus(this.car.pos);
-				const angle = Math.atan2(offset.y, offset.x);
+				const angle = Angle.fromVec2(offset);
 				const distance = offset.length();
 				throttle = Math.min(MAX_SPEED_DISTANCE, distance) / MAX_SPEED_DISTANCE;
-				this.car.steering = clamp(angleDifference(angle, this.car.heading), -MAX_STEERING_ANGLE, MAX_STEERING_ANGLE);
+				this.car.steering = clamp(
+					this.car.heading.smallestAngleTo(angle).getNegativePiToPi(),
+					-MAX_STEERING_ANGLE,
+					MAX_STEERING_ANGLE,
+				);
 				break;
 		}
 		// Gas and brake
@@ -181,13 +183,13 @@ class MainScene {
 		}
 
 		// Drag
-		let drag = this.offRoad() ? OFF_ROAD_DRAG : ON_ROAD_DRAG;
+		const drag = this.offRoad() ? OFF_ROAD_DRAG : ON_ROAD_DRAG;
 		this.car.speed -= drag * this.car.speed;
 		// Change in heading
-		this.car.heading = (this.car.heading + this.car.steering * this.car.speed / 50.0) % (2 * Math.PI);
+		this.car.heading = this.car.heading.plus(this.car.steering * this.car.speed / 50.0);
 
-		const vx = this.car.speed * Math.cos(this.car.heading);
-		const vy = this.car.speed * Math.sin(this.car.heading);
+		const vx = this.car.speed * this.car.heading.cos();
+		const vy = this.car.speed * this.car.heading.sin();
 
 		this.car.pos.x += vx;
 		this.car.pos.y += vy;
@@ -205,11 +207,11 @@ class MainScene {
 			this.car.pos.y -= canvas.height;
 		}
 
-		this.car.frontBumper.pos.x = this.car.pos.x + 20.0 * Math.cos(this.car.heading);
-		this.car.frontBumper.pos.y = this.car.pos.y + 20.0 * Math.sin(this.car.heading);
+		this.car.frontBumper.pos.x = this.car.pos.x + 20.0 * this.car.heading.cos();
+		this.car.frontBumper.pos.y = this.car.pos.y + 20.0 * this.car.heading.sin();
 
-		this.car.backBumper.pos.x = this.car.pos.x - 20.0 * Math.cos(this.car.heading);
-		this.car.backBumper.pos.y = this.car.pos.y - 20.0 * Math.sin(this.car.heading);
+		this.car.backBumper.pos.x = this.car.pos.x - 20.0 * this.car.heading.cos();
+		this.car.backBumper.pos.y = this.car.pos.y - 20.0 * this.car.heading.sin();
 
 		this.wallBumperCollision(this.car.frontBumper);
 		this.wallBumperCollision(this.car.backBumper);
@@ -223,7 +225,8 @@ class MainScene {
 		for (let i = 0; i < this.trackPoints.length; ++i) {
 			const start = this.trackPoints[i];
 			const end = this.trackPoints[(i + 1) % this.trackPoints.length];
-			if (pointSegmentDistance2(this.car.pos, start, end) < TRACK_RADIUS * TRACK_RADIUS) {
+			const segment = new Segment2(start, end);
+			if (segment.pointDistance2(this.car.pos) < TRACK_RADIUS * TRACK_RADIUS) {
 				return false;
 			}
 		}
@@ -235,11 +238,11 @@ class MainScene {
 			const r = bumper.radius + wall.radius;
 			const dx = bumper.pos.x - wall.pos.x;
 			const dy = bumper.pos.y - wall.pos.y;
-			const d2 = dx ** 2.0 + dy ** 2.0;
-			if (d2 != 0.0 && d2 < r ** 2.0) {
+			const d2 = dx * dx + dy * dy;
+			if (d2 != 0.0 && d2 < r * r) {
 				this.car.speed = -(1.0 - WALL_BOUNCE_LOSS) * this.car.speed;
 
-				const d = d2 ** 0.5;
+				const d = Math.sqrt(d2);
 				const factor = (r - d) / d;
 				this.car.pos.x += dx * factor;
 				this.car.pos.y += dy * factor;
@@ -269,17 +272,17 @@ class MainScene {
 		const backOffset = 20.0;
 		const frontAngleOffset = Math.PI / 10.0;
 		const backAngleOffset = Math.PI / 5.0;
-		const frontRight = new Vec2(x + frontOffset * Math.cos(this.car.heading + frontAngleOffset), y + frontOffset * Math.sin(this.car.heading + frontAngleOffset));
-		const frontLeft = new Vec2(x + frontOffset * Math.cos(this.car.heading - frontAngleOffset), y + frontOffset * Math.sin(this.car.heading - frontAngleOffset));
-		const backLeft = new Vec2(x + backOffset * Math.cos(this.car.heading + Math.PI + backAngleOffset), y + backOffset * Math.sin(this.car.heading + Math.PI + backAngleOffset));
-		const backRight = new Vec2(x + backOffset * Math.cos(this.car.heading + Math.PI - backAngleOffset), y + backOffset * Math.sin(this.car.heading + Math.PI - backAngleOffset));
+		const frontRight = new Vec2(x + frontOffset * this.car.heading.plus(frontAngleOffset).cos(), y + frontOffset * this.car.heading.plus(frontAngleOffset).sin());
+		const frontLeft = new Vec2(x + frontOffset * this.car.heading.minus(frontAngleOffset).cos(), y + frontOffset * this.car.heading.minus(frontAngleOffset).sin());
+		const backLeft = new Vec2(x + backOffset * this.car.heading.plus(Math.PI + backAngleOffset).cos(), y + backOffset * this.car.heading.plus(backAngleOffset + Math.PI).sin());
+		const backRight = new Vec2(x + backOffset * this.car.heading.plus(Math.PI - backAngleOffset).cos(), y + backOffset * this.car.heading.minus(backAngleOffset - Math.PI).sin());
 
 		drawBumper(this.car.frontBumper);
 		drawBumper(this.car.backBumper);
 
 		const wheelRadius = 8.0;
-		drawWheel(frontRight, this.car.heading + this.car.steering, wheelRadius, Math.PI / 6.0);
-		drawWheel(frontLeft, this.car.heading + this.car.steering, wheelRadius, Math.PI / 6.0);
+		drawWheel(frontRight, this.car.heading.plus(this.car.steering), wheelRadius, Math.PI / 6.0);
+		drawWheel(frontLeft, this.car.heading.plus(this.car.steering), wheelRadius, Math.PI / 6.0);
 		drawWheel(backLeft, this.car.heading, wheelRadius, Math.PI / 6.0);
 		drawWheel(backRight, this.car.heading, wheelRadius, Math.PI / 6.0);
 
@@ -349,38 +352,24 @@ class MainScene {
 	}
 }
 
-// The smallest angle equivalent to angle1 - angle2.
-function angleDifference(angle1: number, angle2: number): number {
-	return (angle1 - angle2 + Math.PI) % (2.0 * Math.PI) - Math.PI;
-}
-
-// The square of the shortest distance from p to the line segment (q, r).
-function pointSegmentDistance2(p: Vec2, q: Vec2, r: Vec2): number {
-	if (q === r) {
-		return p.minus(q).length2();
-	}
-	const t = clamp(p.minus(q).dot(r.minus(q)) / r.minus(q).length2(), 0.0, 1.0);
-	return p.minus(q.plus(r.minus(q).times(t))).length2();
-}
-
-function drawWheel(pos: Vec2, angle: number, radius: number, angleOffset: number) {
+function drawWheel(pos: Vec2, angle: Angle, radius: number, angleOffset: number) {
 	ctx.fillStyle = "black";
 	ctx.beginPath();
 	ctx.moveTo(
-		pos.x + radius * Math.cos(angle + angleOffset),
-		pos.y + radius * Math.sin(angle + angleOffset),
+		pos.x + radius * angle.plus(angleOffset).cos(),
+		pos.y + radius * angle.plus(angleOffset).sin(),
 	);
 	ctx.lineTo(
-		pos.x + radius * Math.cos(angle - angleOffset),
-		pos.y + radius * Math.sin(angle - angleOffset),
+		pos.x + radius * angle.minus(angleOffset).cos(),
+		pos.y + radius * angle.minus(angleOffset).sin(),
 	);
 	ctx.lineTo(
-		pos.x + radius * Math.cos(angle + Math.PI + angleOffset),
-		pos.y + radius * Math.sin(angle - Math.PI + angleOffset),
+		pos.x + radius * angle.plus(angleOffset + Math.PI).cos(),
+		pos.y + radius * angle.plus(angleOffset - Math.PI).sin(),
 	);
 	ctx.lineTo(
-		pos.x + radius * Math.cos(angle + Math.PI - angleOffset),
-		pos.y + radius * Math.sin(angle + Math.PI - angleOffset),
+		pos.x + radius * angle.minus(angleOffset - Math.PI).cos(),
+		pos.y + radius * angle.minus(angleOffset - Math.PI).sin(),
 	);
 	ctx.closePath();
 	ctx.fill();
