@@ -113,7 +113,7 @@ class Track {
 			const next = (i + 1) % corners.length;
 			const start = corners[i].vertex;
 			const end = corners[next].vertex;
-			const lCPOffset = corners[i].smoothness * end.minus(start).length() / 2;
+			const lCPOffset = corners[i].smoothness * end.minus(start).length() / 3;
 			const cp1 = start.plus(forwardCPOffsets[i].times(lCPOffset));
 			const cp2 = end.minus(forwardCPOffsets[next].times(lCPOffset));
 			this.spline.push(new CubicBezier(start, end, cp1, cp2));

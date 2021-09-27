@@ -86,7 +86,7 @@ var Track = /** @class */ (function () {
             var next = (i + 1) % corners.length;
             var start = corners[i].vertex;
             var end = corners[next].vertex;
-            var lCPOffset = corners[i].smoothness * end.minus(start).length() / 2;
+            var lCPOffset = corners[i].smoothness * end.minus(start).length() / 3;
             var cp1 = start.plus(forwardCPOffsets[i].times(lCPOffset));
             var cp2 = end.minus(forwardCPOffsets[next].times(lCPOffset));
             this.spline.push(new CubicBezier(start, end, cp1, cp2));
