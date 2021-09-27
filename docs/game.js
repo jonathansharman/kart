@@ -68,17 +68,12 @@ var Track = /** @class */ (function () {
             var vNext = corners[(i + 1) % corners.length].vertex;
             var fromPrev = v.minus(vPrev);
             var toNext = vNext.minus(v);
-            var lFromPrev = fromPrev.length();
-            var lToNext = toNext.length();
-            var t = lFromPrev / (lFromPrev + lToNext);
-            var weightedMidpoint = vPrev.plus(vNext.minus(vPrev).times(t));
-            var fromWeightedMidpoint = v.minus(weightedMidpoint);
+            // Get a vector bisecting the angle of the corner.
+            var bisector = fromPrev.times(toNext.length()).plus(toNext.times(-fromPrev.length()));
             // Use the z-coordinate of the cross product to determine if it's a
             // left or right turn and therefore which way to rotate the offset.
             var crossZ = fromPrev.x * toNext.y - fromPrev.y * toNext.x;
-            var rotated = crossZ > 0
-                ? fromWeightedMidpoint.rotatedQuarter()
-                : fromWeightedMidpoint.rotatedThreeQuarters();
+            var rotated = crossZ > 0 ? bisector.rotatedQuarter() : bisector.rotatedThreeQuarters();
             forwardCPOffsets.push(rotated.normalized());
         }
         this.spline = [];
@@ -105,6 +100,44 @@ var Car = /** @class */ (function () {
     }
     return Car;
 }());
+var tracks = [
+    new Track([
+        // Clockwise oval
+        new Corner(new Vec2(300, 300), 1.0),
+        new Corner(new Vec2(800, 300), 1.0),
+        new Corner(new Vec2(800, 500), 1.0),
+        new Corner(new Vec2(300, 500), 1.0),
+    ]),
+    new Track([
+        // Counter-clockwise oval
+        new Corner(new Vec2(300, 300), 1.0),
+        new Corner(new Vec2(300, 500), 1.0),
+        new Corner(new Vec2(800, 500), 1.0),
+        new Corner(new Vec2(800, 300), 1.0),
+    ]),
+    new Track([
+        // Clockwise big track
+        new Corner(new Vec2(100, 100), 1.0),
+        new Corner(new Vec2(924, 100), 1.0),
+        new Corner(new Vec2(924, 668), 1.0),
+        new Corner(new Vec2(824, 668), 1.0),
+        new Corner(new Vec2(602, 568), 1.0),
+        new Corner(new Vec2(422, 568), 1.0),
+        new Corner(new Vec2(200, 668), 1.0),
+        new Corner(new Vec2(100, 668), 1.0),
+    ]),
+    new Track([
+        // Counter-clockwise big track
+        new Corner(new Vec2(100, 100), 1.0),
+        new Corner(new Vec2(100, 668), 1.0),
+        new Corner(new Vec2(200, 668), 1.0),
+        new Corner(new Vec2(422, 568), 1.0),
+        new Corner(new Vec2(602, 568), 1.0),
+        new Corner(new Vec2(824, 668), 1.0),
+        new Corner(new Vec2(924, 668), 1.0),
+        new Corner(new Vec2(924, 100), 1.0),
+    ]),
+];
 var MainScene = /** @class */ (function () {
     function MainScene() {
         this.controlScheme = ControlScheme.MouseFollow;
@@ -113,36 +146,7 @@ var MainScene = /** @class */ (function () {
         this.gas = false;
         this.cameraPos = new Vec2(0.0, 0.0);
         this.car = new Car();
-        this.track = new Track([
-            // Clockwise oval
-            // new Corner(new Vec2(300, 300), 1.0),
-            // new Corner(new Vec2(800, 300), 1.0),
-            // new Corner(new Vec2(800, 500), 1.0),
-            // new Corner(new Vec2(300, 500), 1.0),
-            // Counter-clockwise oval
-            new Corner(new Vec2(300, 300), 1.0),
-            new Corner(new Vec2(300, 500), 1.0),
-            new Corner(new Vec2(800, 500), 1.0),
-            new Corner(new Vec2(800, 300), 1.0),
-            // Clockwise big track
-            // new Corner(new Vec2(100, 100), 1.0),
-            // new Corner(new Vec2(924, 100), 1.0),
-            // new Corner(new Vec2(924, 668), 1.0),
-            // new Corner(new Vec2(824, 668), 1.0),
-            // new Corner(new Vec2(602, 568), 1.0),
-            // new Corner(new Vec2(422, 568), 1.0),
-            // new Corner(new Vec2(200, 668), 1.0),
-            // new Corner(new Vec2(100, 668), 1.0),
-            // Counter-clockwise big track
-            // new Corner(new Vec2(100, 100), 1.0),
-            // new Corner(new Vec2(100, 668), 1.0),
-            // new Corner(new Vec2(200, 668), 1.0),
-            // new Corner(new Vec2(422, 568), 1.0),
-            // new Corner(new Vec2(602, 568), 1.0),
-            // new Corner(new Vec2(824, 668), 1.0),
-            // new Corner(new Vec2(924, 668), 1.0),
-            // new Corner(new Vec2(924, 100), 1.0),
-        ]);
+        this.track = tracks[0];
         this.addWalls();
     }
     MainScene.prototype.addWalls = function () {
