@@ -29,6 +29,10 @@ class Vec2 {
 		return Math.sqrt(this.length2());
 	}
 
+	normalized(): Vec2 {
+		return this.dividedBy(this.length());
+	}
+
 	plus(that: Vec2): Vec2 {
 		return new Vec2(this.x + that.x, this.y + that.y);
 	}
@@ -37,12 +41,34 @@ class Vec2 {
 		return new Vec2(this.x - that.x, this.y - that.y);
 	}
 
-	times(t: number): Vec2 {
-		return new Vec2(t * this.x, t * this.y);
+	times(factor: number): Vec2 {
+		return new Vec2(this.x * factor, this.y * factor);
+	}
+
+	dividedBy(divisor: number): Vec2 {
+		return new Vec2(this.x / divisor, this.y / divisor);
+	}
+
+	negated(): Vec2 {
+		return new Vec2(-this.x, -this.y);
 	}
 
 	dot(that: Vec2): number {
 		return this.x * that.x + this.y * that.y;
+	}
+
+	rotated(radians: number): Vec2 {
+		const cos = Math.cos(radians);
+		const sin = Math.sin(radians);
+		return new Vec2(this.x * cos - this.y * sin, this.x * sin + this.y * cos);
+	}
+
+	rotatedQuarter(): Vec2 {
+		return new Vec2(-this.y, this.x);
+	}
+
+	rotatedThreeQuarters(): Vec2 {
+		return new Vec2(this.y, -this.x);
 	}
 }
 
@@ -114,6 +140,10 @@ class Angle {
 
 	times(factor: number): Angle {
 		return new Angle(this.radians * factor);
+	}
+
+	dividedBy(divisor: number): Angle {
+		return new Angle(this.radians / divisor);
 	}
 
 	negated(): Angle {

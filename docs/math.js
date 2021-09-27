@@ -19,17 +19,37 @@ var Vec2 = /** @class */ (function () {
     Vec2.prototype.length = function () {
         return Math.sqrt(this.length2());
     };
+    Vec2.prototype.normalized = function () {
+        return this.dividedBy(this.length());
+    };
     Vec2.prototype.plus = function (that) {
         return new Vec2(this.x + that.x, this.y + that.y);
     };
     Vec2.prototype.minus = function (that) {
         return new Vec2(this.x - that.x, this.y - that.y);
     };
-    Vec2.prototype.times = function (t) {
-        return new Vec2(t * this.x, t * this.y);
+    Vec2.prototype.times = function (factor) {
+        return new Vec2(this.x * factor, this.y * factor);
+    };
+    Vec2.prototype.dividedBy = function (divisor) {
+        return new Vec2(this.x / divisor, this.y / divisor);
+    };
+    Vec2.prototype.negated = function () {
+        return new Vec2(-this.x, -this.y);
     };
     Vec2.prototype.dot = function (that) {
         return this.x * that.x + this.y * that.y;
+    };
+    Vec2.prototype.rotated = function (radians) {
+        var cos = Math.cos(radians);
+        var sin = Math.sin(radians);
+        return new Vec2(this.x * cos - this.y * sin, this.x * sin + this.y * cos);
+    };
+    Vec2.prototype.rotatedQuarter = function () {
+        return new Vec2(-this.y, this.x);
+    };
+    Vec2.prototype.rotatedThreeQuarters = function () {
+        return new Vec2(this.y, -this.x);
     };
     return Vec2;
 }());
@@ -85,6 +105,9 @@ var Angle = /** @class */ (function () {
     };
     Angle.prototype.times = function (factor) {
         return new Angle(this.radians * factor);
+    };
+    Angle.prototype.dividedBy = function (divisor) {
+        return new Angle(this.radians / divisor);
     };
     Angle.prototype.negated = function () {
         return new Angle(-this.radians);

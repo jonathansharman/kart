@@ -41,6 +41,59 @@ var Bumper = /** @class */ (function () {
     }
     return Bumper;
 }());
+var Corner = /** @class */ (function () {
+    function Corner(vertex, smoothness) {
+        this.vertex = vertex;
+        this.smoothness = smoothness;
+    }
+    return Corner;
+}());
+var CubicBezier = /** @class */ (function () {
+    function CubicBezier(start, end, cp1, cp2) {
+        this.start = start;
+        this.end = end;
+        this.cp1 = cp1;
+        this.cp2 = cp2;
+    }
+    return CubicBezier;
+}());
+var Track = /** @class */ (function () {
+    function Track(corners) {
+        // Build a list of unit offset vectors from each vertex to its control
+        // point in the forward direction.
+        var forwardCPOffsets = [];
+        for (var i = 0; i < corners.length; ++i) {
+            var v = corners[i].vertex;
+            var vPrev = corners[(i - 1 + corners.length) % corners.length].vertex;
+            var vNext = corners[(i + 1) % corners.length].vertex;
+            var fromPrev = v.minus(vPrev);
+            var toNext = vNext.minus(v);
+            var lFromPrev = fromPrev.length();
+            var lToNext = toNext.length();
+            var t = lFromPrev / (lFromPrev + lToNext);
+            var weightedMidpoint = vPrev.plus(vNext.minus(vPrev).times(t));
+            var fromWeightedMidpoint = v.minus(weightedMidpoint);
+            // Use the z-coordinate of the cross product to determine if it's a
+            // left or right turn and therefore which way to rotate the offset.
+            var crossZ = fromPrev.x * toNext.y - fromPrev.y * toNext.x;
+            var rotated = crossZ > 0
+                ? fromWeightedMidpoint.rotatedQuarter()
+                : fromWeightedMidpoint.rotatedThreeQuarters();
+            forwardCPOffsets.push(rotated.normalized());
+        }
+        this.spline = [];
+        for (var i = 0; i < corners.length; ++i) {
+            var next = (i + 1) % corners.length;
+            var start = corners[i].vertex;
+            var end = corners[next].vertex;
+            var lCPOffset = corners[i].smoothness * end.minus(start).length() / 2;
+            var cp1 = start.plus(forwardCPOffsets[i].times(lCPOffset));
+            var cp2 = end.minus(forwardCPOffsets[next].times(lCPOffset));
+            this.spline.push(new CubicBezier(start, end, cp1, cp2));
+        }
+    }
+    return Track;
+}());
 var Car = /** @class */ (function () {
     function Car() {
         this.pos = new Vec2(0.0, 0.0);
@@ -60,16 +113,36 @@ var MainScene = /** @class */ (function () {
         this.gas = false;
         this.cameraPos = new Vec2(0.0, 0.0);
         this.car = new Car();
-        this.trackPoints = [
-            new Vec2(100, 100),
-            new Vec2(100, 668),
-            new Vec2(200, 668),
-            new Vec2(422, 568),
-            new Vec2(602, 568),
-            new Vec2(824, 668),
-            new Vec2(924, 668),
-            new Vec2(924, 100),
-        ];
+        this.track = new Track([
+            // Clockwise oval
+            // new Corner(new Vec2(300, 300), 1.0),
+            // new Corner(new Vec2(800, 300), 1.0),
+            // new Corner(new Vec2(800, 500), 1.0),
+            // new Corner(new Vec2(300, 500), 1.0),
+            // Counter-clockwise oval
+            new Corner(new Vec2(300, 300), 1.0),
+            new Corner(new Vec2(300, 500), 1.0),
+            new Corner(new Vec2(800, 500), 1.0),
+            new Corner(new Vec2(800, 300), 1.0),
+            // Clockwise big track
+            // new Corner(new Vec2(100, 100), 1.0),
+            // new Corner(new Vec2(924, 100), 1.0),
+            // new Corner(new Vec2(924, 668), 1.0),
+            // new Corner(new Vec2(824, 668), 1.0),
+            // new Corner(new Vec2(602, 568), 1.0),
+            // new Corner(new Vec2(422, 568), 1.0),
+            // new Corner(new Vec2(200, 668), 1.0),
+            // new Corner(new Vec2(100, 668), 1.0),
+            // Counter-clockwise big track
+            // new Corner(new Vec2(100, 100), 1.0),
+            // new Corner(new Vec2(100, 668), 1.0),
+            // new Corner(new Vec2(200, 668), 1.0),
+            // new Corner(new Vec2(422, 568), 1.0),
+            // new Corner(new Vec2(602, 568), 1.0),
+            // new Corner(new Vec2(824, 668), 1.0),
+            // new Corner(new Vec2(924, 668), 1.0),
+            // new Corner(new Vec2(924, 100), 1.0),
+        ]);
         this.addWalls();
     }
     MainScene.prototype.addWalls = function () {
@@ -163,15 +236,17 @@ var MainScene = /** @class */ (function () {
         //this.cameraPos = this.car.pos;
     };
     MainScene.prototype.offRoad = function () {
-        for (var i = 0; i < this.trackPoints.length; ++i) {
-            var start = this.trackPoints[i];
-            var end = this.trackPoints[(i + 1) % this.trackPoints.length];
-            var segment = new Segment2(start, end);
-            if (segment.pointDistance2(this.car.pos) < TRACK_RADIUS * TRACK_RADIUS) {
-                return false;
-            }
-        }
-        return true;
+        // TODO: Collision detection with track's bezier curves
+        // for (let i = 0; i < this.track.length; ++i) {
+        // 	const start = this.trackPoints[i];
+        // 	const end = this.trackPoints[(i + 1) % this.trackPoints.length];
+        // 	const segment = new Segment2(start, end);
+        // 	if (segment.pointDistance2(this.car.pos) < TRACK_RADIUS * TRACK_RADIUS) {
+        // 		return false;
+        // 	}
+        // }
+        // return true;
+        return false;
     };
     MainScene.prototype.wallBumperCollision = function (bumper) {
         for (var _i = 0, _a = this.wallsNear(bumper.pos); _i < _a.length; _i++) {
@@ -248,19 +323,29 @@ var MainScene = /** @class */ (function () {
         });
     };
     MainScene.prototype.drawTrack = function (radius, style) {
-        ctx.fillStyle = style;
-        for (var i = 0; i < this.trackPoints.length; ++i) {
-            var start = this.trackPoints[i];
-            var end = this.trackPoints[(i + 1) % this.trackPoints.length];
-            ctx.beginPath();
-            ctx.moveTo(start.x, start.y);
-            ctx.lineTo(end.x, end.y);
+        ctx.beginPath();
+        ctx.strokeStyle = style;
+        var start = this.track.spline[0].start;
+        ctx.moveTo(start.x, start.y);
+        for (var _i = 0, _a = this.track.spline; _i < _a.length; _i++) {
+            var curve = _a[_i];
+            ctx.bezierCurveTo(curve.cp1.x, curve.cp1.y, curve.cp2.x, curve.cp2.y, curve.end.x, curve.end.y);
             ctx.lineWidth = 2 * radius;
-            ctx.strokeStyle = style;
             ctx.stroke();
+        }
+        // Draw Bezier curve "frame".
+        ctx.lineWidth = 1;
+        var even = true;
+        for (var _b = 0, _c = this.track.spline; _b < _c.length; _b++) {
+            var curve = _c[_b];
+            ctx.strokeStyle = even ? "red" : "white";
+            even = !even;
             ctx.beginPath();
-            ctx.ellipse(start.x, start.y, radius, radius, 0.0, 0.0, 2.0 * Math.PI);
-            ctx.fill();
+            ctx.moveTo(curve.start.x, curve.start.y);
+            ctx.lineTo(curve.cp1.x, curve.cp1.y);
+            ctx.lineTo(curve.cp2.x, curve.cp2.y);
+            ctx.lineTo(curve.end.x, curve.end.y);
+            ctx.stroke();
         }
     };
     return MainScene;
