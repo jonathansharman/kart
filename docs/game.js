@@ -15,7 +15,7 @@ var TERRAIN_CELL_COLS = Math.floor(canvas.width / TERRAIN_CELL_WIDTH);
 var TERRAIN_CELL_ROWS = Math.floor(canvas.height / TERRAIN_CELL_WIDTH);
 var TRACK_RADIUS = 50.0;
 var TRACK_BORDER = 2.0;
-// Axis control scheme constants
+// MouseAxes control scheme constants
 var CONTROL_AREA_WIDTH = 400.0;
 var CONTROL_AREA_HEIGHT = 300.0;
 var CONTROL_AREA_LEFT = 0.5 * (canvas.width - CONTROL_AREA_WIDTH);
@@ -26,12 +26,16 @@ var DEAD_AREA_WIDTH = 75.0;
 var DEAD_AREA_LEFT = 0.5 * (canvas.width - DEAD_AREA_WIDTH);
 var DEAD_AREA_RIGHT = DEAD_AREA_LEFT + DEAD_AREA_WIDTH;
 var STEERING_WIDTH = 0.5 * (CONTROL_AREA_WIDTH - DEAD_AREA_WIDTH);
-// Follow control scheme constants
+// MouseFollow control scheme constants
 var MAX_SPEED_DISTANCE = 300.0;
+// GamepadFollow control scheme constants
+var STICK_DEAD_RADIUS = 0.25;
+var STICK_STEERING_DRAG = 0.95;
 var ControlScheme;
 (function (ControlScheme) {
     ControlScheme[ControlScheme["MouseAxes"] = 0] = "MouseAxes";
     ControlScheme[ControlScheme["MouseFollow"] = 1] = "MouseFollow";
+    ControlScheme[ControlScheme["GamepadFollow"] = 2] = "GamepadFollow";
 })(ControlScheme || (ControlScheme = {}));
 var Bumper = /** @class */ (function () {
     function Bumper(radius, pos) {
@@ -155,7 +159,8 @@ var tracks = [
 ];
 var MainScene = /** @class */ (function () {
     function MainScene() {
-        this.controlScheme = ControlScheme.MouseFollow;
+        this.debug = false;
+        this.controlScheme = ControlScheme.GamepadFollow;
         this.mousePos = new Vec2(0.0, 0.0);
         this.brake = false;
         this.gas = false;
@@ -196,24 +201,50 @@ var MainScene = /** @class */ (function () {
         return nearbyWalls;
     };
     MainScene.prototype.update = function () {
-        var throttle;
-        switch (this.controlScheme) {
+        // Fall back to mouse controls if the gamepad is disconnected.
+        var controlScheme = this.controlScheme;
+        var gamepad = navigator.getGamepads()[0];
+        if (!gamepad) {
+            controlScheme = ControlScheme.MouseFollow;
+        }
+        var throttle = 0.0;
+        switch (controlScheme) {
             case ControlScheme.MouseAxes:
-                // Left steering: 0 (right) to 1 (left)
-                var leftSteering = clamp((DEAD_AREA_LEFT - this.mousePos.x) / STEERING_WIDTH, 0.0, 1.0);
-                // Right steering: 0 (left) to 1 (right)
-                var rightSteering = clamp((this.mousePos.x - DEAD_AREA_RIGHT) / STEERING_WIDTH, 0.0, 1.0);
-                // Throttle: 0 (bottom) to 1 (top)
-                throttle = clamp((CONTROL_AREA_BOTTOM - this.mousePos.y) / CONTROL_AREA_HEIGHT, 0.0, 1.0);
-                // Steering
-                this.car.steering = MAX_STEERING_ANGLE * (rightSteering - leftSteering);
+                {
+                    // Left steering: 0 (right) to 1 (left)
+                    var leftSteering = clamp((DEAD_AREA_LEFT - this.mousePos.x) / STEERING_WIDTH, 0.0, 1.0);
+                    // Right steering: 0 (left) to 1 (right)
+                    var rightSteering = clamp((this.mousePos.x - DEAD_AREA_RIGHT) / STEERING_WIDTH, 0.0, 1.0);
+                    // Throttle: 0 (bottom) to 1 (top)
+                    throttle = clamp((CONTROL_AREA_BOTTOM - this.mousePos.y) / CONTROL_AREA_HEIGHT, 0.0, 1.0);
+                    // Steering
+                    this.car.steering = MAX_STEERING_ANGLE * (rightSteering - leftSteering);
+                }
                 break;
             case ControlScheme.MouseFollow:
-                var offset = this.mousePos.minus(this.car.pos);
-                var angle = Angle.fromVec2(offset);
-                var distance = offset.length();
-                throttle = Math.min(MAX_SPEED_DISTANCE, distance) / MAX_SPEED_DISTANCE;
-                this.car.steering = clamp(this.car.heading.smallestAngleTo(angle).getNegativePiToPi(), -MAX_STEERING_ANGLE, MAX_STEERING_ANGLE);
+                {
+                    var offset = this.mousePos.minus(this.car.pos);
+                    var angle = Angle.fromVec2(offset);
+                    var distance = offset.length();
+                    throttle = Math.min(MAX_SPEED_DISTANCE, distance) / MAX_SPEED_DISTANCE;
+                    this.car.steering = clamp(this.car.heading.smallestAngleTo(angle).getNegativePiToPi(), -MAX_STEERING_ANGLE, MAX_STEERING_ANGLE);
+                }
+                break;
+            case ControlScheme.GamepadFollow:
+                {
+                    var offset = new Vec2(gamepad.axes[0], gamepad.axes[1]);
+                    var angle = Angle.fromVec2(offset);
+                    var length_1 = offset.length();
+                    if (length_1 > STICK_DEAD_RADIUS) {
+                        throttle = Math.min(1.0, (length_1 - STICK_DEAD_RADIUS) / (1.0 - STICK_DEAD_RADIUS));
+                        this.car.steering = clamp(this.car.heading.smallestAngleTo(angle).getNegativePiToPi(), -MAX_STEERING_ANGLE, MAX_STEERING_ANGLE);
+                        this.gas = true;
+                    }
+                    else {
+                        this.gas = false;
+                        this.car.steering *= STICK_STEERING_DRAG;
+                    }
+                }
                 break;
         }
         // Gas and brake
@@ -289,8 +320,6 @@ var MainScene = /** @class */ (function () {
         ctx.beginPath();
         ctx.rect(0, 0, canvas.width, canvas.height);
         ctx.fill();
-        var x = this.car.pos.x - this.cameraPos.x;
-        var y = this.car.pos.y - this.cameraPos.y;
         this.drawTrack(TRACK_RADIUS, "black");
         this.drawTrack(TRACK_RADIUS - TRACK_BORDER, "rgb(60, 60, 60)");
         // Draw walls.
@@ -298,7 +327,28 @@ var MainScene = /** @class */ (function () {
             var wall = _a[_i];
             drawBumper(wall);
         }
-        // Draw car.
+        this.drawCar();
+        // Draw control area when in MouseAxes control mode.
+        if (this.controlScheme == ControlScheme.MouseAxes) {
+            ctx.strokeStyle = "black";
+            ctx.lineWidth = 1.0;
+            ctx.beginPath();
+            ctx.rect(0.5 * (canvas.width - CONTROL_AREA_WIDTH), 0.5 * (canvas.height - CONTROL_AREA_HEIGHT), CONTROL_AREA_WIDTH, CONTROL_AREA_HEIGHT);
+            ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+            ctx.fill();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.fillStyle = "black";
+            ctx.rect(0.5 * (canvas.width - DEAD_AREA_WIDTH), 0.5 * (canvas.height - CONTROL_AREA_HEIGHT), DEAD_AREA_WIDTH, CONTROL_AREA_HEIGHT);
+            ctx.stroke();
+        }
+        window.requestAnimationFrame(function (timestamp) {
+            _this.draw(timestamp);
+        });
+    };
+    MainScene.prototype.drawCar = function () {
+        var x = this.car.pos.x - this.cameraPos.x;
+        var y = this.car.pos.y - this.cameraPos.y;
         var frontOffset = 25.0;
         var backOffset = 20.0;
         var frontAngleOffset = Math.PI / 10.0;
@@ -307,8 +357,10 @@ var MainScene = /** @class */ (function () {
         var frontLeft = new Vec2(x + frontOffset * this.car.heading.minus(frontAngleOffset).cos(), y + frontOffset * this.car.heading.minus(frontAngleOffset).sin());
         var backLeft = new Vec2(x + backOffset * this.car.heading.plus(Math.PI + backAngleOffset).cos(), y + backOffset * this.car.heading.plus(backAngleOffset + Math.PI).sin());
         var backRight = new Vec2(x + backOffset * this.car.heading.plus(Math.PI - backAngleOffset).cos(), y + backOffset * this.car.heading.minus(backAngleOffset - Math.PI).sin());
-        drawBumper(this.car.frontBumper);
-        drawBumper(this.car.backBumper);
+        if (this.debug) {
+            drawBumper(this.car.frontBumper);
+            drawBumper(this.car.backBumper);
+        }
         var wheelRadius = 8.0;
         drawWheel(frontRight, this.car.heading.plus(this.car.steering), wheelRadius, Math.PI / 6.0);
         drawWheel(frontLeft, this.car.heading.plus(this.car.steering), wheelRadius, Math.PI / 6.0);
@@ -325,21 +377,6 @@ var MainScene = /** @class */ (function () {
         ctx.strokeStyle = "black";
         ctx.lineWidth = 1.0;
         ctx.stroke();
-        // Draw control area.
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = 1.0;
-        ctx.beginPath();
-        ctx.rect(0.5 * (canvas.width - CONTROL_AREA_WIDTH), 0.5 * (canvas.height - CONTROL_AREA_HEIGHT), CONTROL_AREA_WIDTH, CONTROL_AREA_HEIGHT);
-        ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
-        ctx.fill();
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.fillStyle = "black";
-        ctx.rect(0.5 * (canvas.width - DEAD_AREA_WIDTH), 0.5 * (canvas.height - CONTROL_AREA_HEIGHT), DEAD_AREA_WIDTH, CONTROL_AREA_HEIGHT);
-        ctx.stroke();
-        window.requestAnimationFrame(function (timestamp) {
-            _this.draw(timestamp);
-        });
     };
     MainScene.prototype.drawTrack = function (radius, style) {
         ctx.beginPath();
@@ -352,19 +389,21 @@ var MainScene = /** @class */ (function () {
             ctx.lineWidth = 2 * radius;
             ctx.stroke();
         }
-        // Draw Bezier curve "frame".
-        ctx.lineWidth = 1;
-        var even = true;
-        for (var _b = 0, _c = this.track.spline; _b < _c.length; _b++) {
-            var curve = _c[_b];
-            ctx.strokeStyle = even ? "red" : "white";
-            even = !even;
-            ctx.beginPath();
-            ctx.moveTo(curve.start.x, curve.start.y);
-            ctx.lineTo(curve.cp1.x, curve.cp1.y);
-            ctx.lineTo(curve.cp2.x, curve.cp2.y);
-            ctx.lineTo(curve.end.x, curve.end.y);
-            ctx.stroke();
+        // Draw Bezier curve "frame" in debug mode.
+        if (this.debug) {
+            ctx.lineWidth = 1;
+            var even = true;
+            for (var _b = 0, _c = this.track.spline; _b < _c.length; _b++) {
+                var curve = _c[_b];
+                ctx.strokeStyle = even ? "red" : "white";
+                even = !even;
+                ctx.beginPath();
+                ctx.moveTo(curve.start.x, curve.start.y);
+                ctx.lineTo(curve.cp1.x, curve.cp1.y);
+                ctx.lineTo(curve.cp2.x, curve.cp2.y);
+                ctx.lineTo(curve.end.x, curve.end.y);
+                ctx.stroke();
+            }
         }
     };
     return MainScene;
@@ -419,6 +458,9 @@ window.onkeydown = function (event) {
             return false;
         case "Digit2":
             mainScene.gas = true;
+            return false;
+        case "KeyD":
+            mainScene.debug = !mainScene.debug;
             return false;
     }
 };

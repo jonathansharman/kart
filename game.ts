@@ -22,7 +22,7 @@ const TERRAIN_CELL_ROWS = Math.floor(canvas.height / TERRAIN_CELL_WIDTH);
 const TRACK_RADIUS = 50.0;
 const TRACK_BORDER = 2.0;
 
-// Axis control scheme constants
+// MouseAxes control scheme constants
 
 const CONTROL_AREA_WIDTH = 400.0;
 const CONTROL_AREA_HEIGHT = 300.0;
@@ -37,13 +37,19 @@ const DEAD_AREA_RIGHT = DEAD_AREA_LEFT + DEAD_AREA_WIDTH;
 
 const STEERING_WIDTH = 0.5 * (CONTROL_AREA_WIDTH - DEAD_AREA_WIDTH);
 
-// Follow control scheme constants
+// MouseFollow control scheme constants
 
 const MAX_SPEED_DISTANCE = 300.0;
+
+// GamepadFollow control scheme constants
+
+const STICK_DEAD_RADIUS = 0.25;
+const STICK_STEERING_DRAG = 0.95;
 
 enum ControlScheme {
 	MouseAxes,
 	MouseFollow,
+	GamepadFollow,
 }
 
 class Bumper {
@@ -191,6 +197,8 @@ const tracks: Track[] = [
 ];
 
 class MainScene {
+	public debug: boolean;
+
 	public controlScheme: ControlScheme;
 	public mousePos: Vec2;
 	public brake: boolean;
@@ -206,7 +214,9 @@ class MainScene {
 	private wallBuckets: Bumper[][];
 
 	constructor() {
-		this.controlScheme = ControlScheme.MouseFollow;
+		this.debug = false;
+
+		this.controlScheme = ControlScheme.GamepadFollow;
 		this.mousePos = new Vec2(0.0, 0.0);
 		this.brake = false;
 		this.gas = false;
@@ -220,7 +230,7 @@ class MainScene {
 		this.addWalls();
 	}
 
-	addWalls(): void {
+	addWalls() {
 		this.walls = [];
 		this.wallBuckets = [];
 		for (let i = 0; i < COLLISION_BUCKET_COLS * COLLISION_BUCKET_ROWS; ++i) {
@@ -229,7 +239,7 @@ class MainScene {
 		this.addWall(new Bumper(15.0, new Vec2(0.5 * canvas.width, 0.5 * canvas.height)));
 	}
 
-	addWall(wall: Bumper): void {
+	addWall(wall: Bumper) {
 		const col = Math.floor(wall.pos.x / COLLISION_BUCKET_WIDTH);
 		const row = Math.floor(wall.pos.y / COLLISION_BUCKET_WIDTH);
 		this.walls.push(wall);
@@ -254,29 +264,59 @@ class MainScene {
 		return nearbyWalls;
 	}
 
-	update(): void {
-		let throttle: number;
-		switch (this.controlScheme) {
+	update() {
+		// Fall back to mouse controls if the gamepad is disconnected.
+		let controlScheme = this.controlScheme;
+		const gamepad = navigator.getGamepads()[0];
+		if (!gamepad) {
+			controlScheme = ControlScheme.MouseFollow;
+		}
+
+		let throttle = 0.0;
+		switch (controlScheme) {
 			case ControlScheme.MouseAxes:
-				// Left steering: 0 (right) to 1 (left)
-				const leftSteering = clamp((DEAD_AREA_LEFT - this.mousePos.x) / STEERING_WIDTH, 0.0, 1.0);
-				// Right steering: 0 (left) to 1 (right)
-				const rightSteering = clamp((this.mousePos.x - DEAD_AREA_RIGHT) / STEERING_WIDTH, 0.0, 1.0);
-				// Throttle: 0 (bottom) to 1 (top)
-				throttle = clamp((CONTROL_AREA_BOTTOM - this.mousePos.y) / CONTROL_AREA_HEIGHT, 0.0, 1.0);
-				// Steering
-				this.car.steering = MAX_STEERING_ANGLE * (rightSteering - leftSteering);
+				{
+					// Left steering: 0 (right) to 1 (left)
+					const leftSteering = clamp((DEAD_AREA_LEFT - this.mousePos.x) / STEERING_WIDTH, 0.0, 1.0);
+					// Right steering: 0 (left) to 1 (right)
+					const rightSteering = clamp((this.mousePos.x - DEAD_AREA_RIGHT) / STEERING_WIDTH, 0.0, 1.0);
+					// Throttle: 0 (bottom) to 1 (top)
+					throttle = clamp((CONTROL_AREA_BOTTOM - this.mousePos.y) / CONTROL_AREA_HEIGHT, 0.0, 1.0);
+					// Steering
+					this.car.steering = MAX_STEERING_ANGLE * (rightSteering - leftSteering);
+				}
 				break;
 			case ControlScheme.MouseFollow:
-				const offset = this.mousePos.minus(this.car.pos);
-				const angle = Angle.fromVec2(offset);
-				const distance = offset.length();
-				throttle = Math.min(MAX_SPEED_DISTANCE, distance) / MAX_SPEED_DISTANCE;
-				this.car.steering = clamp(
-					this.car.heading.smallestAngleTo(angle).getNegativePiToPi(),
-					-MAX_STEERING_ANGLE,
-					MAX_STEERING_ANGLE,
-				);
+				{
+					const offset = this.mousePos.minus(this.car.pos);
+					const angle = Angle.fromVec2(offset);
+					const distance = offset.length();
+					throttle = Math.min(MAX_SPEED_DISTANCE, distance) / MAX_SPEED_DISTANCE;
+					this.car.steering = clamp(
+						this.car.heading.smallestAngleTo(angle).getNegativePiToPi(),
+						-MAX_STEERING_ANGLE,
+						MAX_STEERING_ANGLE,
+					);
+				}
+				break;
+			case ControlScheme.GamepadFollow:
+				{
+					let offset = new Vec2(gamepad.axes[0], gamepad.axes[1]);
+					const angle = Angle.fromVec2(offset);
+					const length = offset.length();
+					if (length > STICK_DEAD_RADIUS) {
+						throttle = Math.min(1.0, (length - STICK_DEAD_RADIUS) / (1.0 - STICK_DEAD_RADIUS));
+						this.car.steering = clamp(
+							this.car.heading.smallestAngleTo(angle).getNegativePiToPi(),
+							-MAX_STEERING_ANGLE,
+							MAX_STEERING_ANGLE,
+						);
+						this.gas = true;
+					} else {
+						this.gas = false;
+						this.car.steering *= STICK_STEERING_DRAG;
+					}
+				}
 				break;
 		}
 		// Gas and brake
@@ -340,7 +380,7 @@ class MainScene {
 		return false;
 	}
 
-	wallBumperCollision(bumper: Bumper): void {
+	wallBumperCollision(bumper: Bumper) {
 		for (let wall of this.wallsNear(bumper.pos)) {
 			const r = bumper.radius + wall.radius;
 			const dx = bumper.pos.x - wall.pos.x;
@@ -357,14 +397,11 @@ class MainScene {
 		}
 	}
 
-	draw(_timestamp: DOMHighResTimeStamp): void {
+	draw(_timestamp: DOMHighResTimeStamp) {
 		ctx.fillStyle = "rgb(30, 100, 40)";
 		ctx.beginPath();
 		ctx.rect(0, 0, canvas.width, canvas.height);
 		ctx.fill();
-
-		const x = this.car.pos.x - this.cameraPos.x;
-		const y = this.car.pos.y - this.cameraPos.y;
 
 		this.drawTrack(TRACK_RADIUS, "black");
 		this.drawTrack(TRACK_RADIUS - TRACK_BORDER, "rgb(60, 60, 60)");
@@ -374,18 +411,67 @@ class MainScene {
 			drawBumper(wall);
 		}
 
-		// Draw car.
+		this.drawCar();
+
+		// Draw control area when in MouseAxes control mode.
+		if (this.controlScheme == ControlScheme.MouseAxes) {
+			ctx.strokeStyle = "black";
+			ctx.lineWidth = 1.0;
+			ctx.beginPath();
+			ctx.rect(
+				0.5 * (canvas.width - CONTROL_AREA_WIDTH),
+				0.5 * (canvas.height - CONTROL_AREA_HEIGHT),
+				CONTROL_AREA_WIDTH,
+				CONTROL_AREA_HEIGHT,
+			);
+			ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+			ctx.fill();
+			ctx.stroke();
+			ctx.beginPath();
+			ctx.fillStyle = "black";
+			ctx.rect(
+				0.5 * (canvas.width - DEAD_AREA_WIDTH),
+				0.5 * (canvas.height - CONTROL_AREA_HEIGHT),
+				DEAD_AREA_WIDTH,
+				CONTROL_AREA_HEIGHT,
+			);
+			ctx.stroke();
+		}
+
+		window.requestAnimationFrame((timestamp: DOMHighResTimeStamp) => {
+			this.draw(timestamp);
+		});
+	}
+
+	drawCar() {
+		const x = this.car.pos.x - this.cameraPos.x;
+		const y = this.car.pos.y - this.cameraPos.y;
+
 		const frontOffset = 25.0;
 		const backOffset = 20.0;
 		const frontAngleOffset = Math.PI / 10.0;
 		const backAngleOffset = Math.PI / 5.0;
-		const frontRight = new Vec2(x + frontOffset * this.car.heading.plus(frontAngleOffset).cos(), y + frontOffset * this.car.heading.plus(frontAngleOffset).sin());
-		const frontLeft = new Vec2(x + frontOffset * this.car.heading.minus(frontAngleOffset).cos(), y + frontOffset * this.car.heading.minus(frontAngleOffset).sin());
-		const backLeft = new Vec2(x + backOffset * this.car.heading.plus(Math.PI + backAngleOffset).cos(), y + backOffset * this.car.heading.plus(backAngleOffset + Math.PI).sin());
-		const backRight = new Vec2(x + backOffset * this.car.heading.plus(Math.PI - backAngleOffset).cos(), y + backOffset * this.car.heading.minus(backAngleOffset - Math.PI).sin());
+		const frontRight = new Vec2(
+			x + frontOffset * this.car.heading.plus(frontAngleOffset).cos(),
+			y + frontOffset * this.car.heading.plus(frontAngleOffset).sin(),
+		);
+		const frontLeft = new Vec2(
+			x + frontOffset * this.car.heading.minus(frontAngleOffset).cos(),
+			y + frontOffset * this.car.heading.minus(frontAngleOffset).sin(),
+		);
+		const backLeft = new Vec2(
+			x + backOffset * this.car.heading.plus(Math.PI + backAngleOffset).cos(),
+			y + backOffset * this.car.heading.plus(backAngleOffset + Math.PI).sin(),
+		);
+		const backRight = new Vec2(
+			x + backOffset * this.car.heading.plus(Math.PI - backAngleOffset).cos(),
+			y + backOffset * this.car.heading.minus(backAngleOffset - Math.PI).sin(),
+		);
 
-		drawBumper(this.car.frontBumper);
-		drawBumper(this.car.backBumper);
+		if (this.debug) {
+			drawBumper(this.car.frontBumper);
+			drawBumper(this.car.backBumper);
+		}
 
 		const wheelRadius = 8.0;
 		drawWheel(frontRight, this.car.heading.plus(this.car.steering), wheelRadius, Math.PI / 6.0);
@@ -404,36 +490,9 @@ class MainScene {
 		ctx.strokeStyle = "black";
 		ctx.lineWidth = 1.0;
 		ctx.stroke();
-
-		// Draw control area.
-		ctx.strokeStyle = "black";
-		ctx.lineWidth = 1.0;
-		ctx.beginPath();
-		ctx.rect(
-			0.5 * (canvas.width - CONTROL_AREA_WIDTH),
-			0.5 * (canvas.height - CONTROL_AREA_HEIGHT),
-			CONTROL_AREA_WIDTH,
-			CONTROL_AREA_HEIGHT,
-		);
-		ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
-		ctx.fill();
-		ctx.stroke();
-		ctx.beginPath();
-		ctx.fillStyle = "black";
-		ctx.rect(
-			0.5 * (canvas.width - DEAD_AREA_WIDTH),
-			0.5 * (canvas.height - CONTROL_AREA_HEIGHT),
-			DEAD_AREA_WIDTH,
-			CONTROL_AREA_HEIGHT,
-		);
-		ctx.stroke();
-
-		window.requestAnimationFrame((timestamp: DOMHighResTimeStamp) => {
-			this.draw(timestamp);
-		});
 	}
 
-	drawTrack(radius, style): void {
+	drawTrack(radius, style) {
 		ctx.beginPath();
 		ctx.strokeStyle = style;
 
@@ -445,18 +504,20 @@ class MainScene {
 			ctx.stroke();
 		}
 
-		// Draw Bezier curve "frame".
-		ctx.lineWidth = 1;
-		let even = true;
-		for (let curve of this.track.spline) {
-			ctx.strokeStyle = even ? "red" : "white";
-			even = !even;
-			ctx.beginPath();
-			ctx.moveTo(curve.start.x, curve.start.y);
-			ctx.lineTo(curve.cp1.x, curve.cp1.y);
-			ctx.lineTo(curve.cp2.x, curve.cp2.y);
-			ctx.lineTo(curve.end.x, curve.end.y);
-			ctx.stroke();
+		// Draw Bezier curve "frame" in debug mode.
+		if (this.debug) {
+			ctx.lineWidth = 1;
+			let even = true;
+			for (let curve of this.track.spline) {
+				ctx.strokeStyle = even ? "red" : "white";
+				even = !even;
+				ctx.beginPath();
+				ctx.moveTo(curve.start.x, curve.start.y);
+				ctx.lineTo(curve.cp1.x, curve.cp1.y);
+				ctx.lineTo(curve.cp2.x, curve.cp2.y);
+				ctx.lineTo(curve.end.x, curve.end.y);
+				ctx.stroke();
+			}
 		}
 	}
 }
@@ -484,7 +545,7 @@ function drawWheel(pos: Vec2, angle: Angle, radius: number, angleOffset: number)
 	ctx.fill();
 }
 
-function drawBumper(bumper): void {
+function drawBumper(bumper) {
 	ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
 	ctx.beginPath();
 	ctx.ellipse(
@@ -534,6 +595,9 @@ window.onkeydown = (event: KeyboardEvent) => {
 			return false;
 		case "Digit2":
 			mainScene.gas = true;
+			return false;
+		case "KeyD":
+			mainScene.debug = !mainScene.debug;
 			return false;
 	}
 };
