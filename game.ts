@@ -108,9 +108,9 @@ class Track {
 			const next = (i + 1) % corners.length;
 			const start = corners[i].vertex;
 			const end = corners[next].vertex;
-			const lCPOffset = corners[i].smoothness * end.minus(start).length() / 3;
-			const cp1 = start.plus(forwardCPOffsets[i].times(lCPOffset));
-			const cp2 = end.minus(forwardCPOffsets[next].times(lCPOffset));
+			const l = end.minus(start).length() / 3;
+			const cp1 = start.plus(forwardCPOffsets[i].times(corners[i].smoothness * l));
+			const cp2 = end.minus(forwardCPOffsets[next].times(corners[next].smoothness * l));
 			this.spline.push(new CubicBezier(start, end, cp1, cp2));
 		}
 	}
@@ -138,6 +138,21 @@ class Car {
 
 const tracks: Track[] = [
 	new Track([
+		// Serpentine
+		new Corner(new Vec2(100, 100), 0.5),
+		new Corner(new Vec2(100, 668), 0.5),
+		new Corner(new Vec2(250, 668), 1.0),
+		new Corner(new Vec2(250, 200), 1.0),
+		new Corner(new Vec2(400, 200), 1.0),
+		new Corner(new Vec2(400, 668), 1.0),
+		new Corner(new Vec2(550, 668), 1.0),
+		new Corner(new Vec2(550, 200), 1.0),
+		new Corner(new Vec2(700, 200), 1.0),
+		new Corner(new Vec2(700, 668), 1.0),
+		new Corner(new Vec2(850, 668), 0.5),
+		new Corner(new Vec2(850, 100), 0.5),
+	]),
+	new Track([
 		// Clockwise oval
 		new Corner(new Vec2(300, 300), 1.0),
 		new Corner(new Vec2(800, 300), 1.0),
@@ -153,8 +168,8 @@ const tracks: Track[] = [
 	]),
 	new Track([
 		// Clockwise big track
-		new Corner(new Vec2(100, 100), 1.0),
-		new Corner(new Vec2(924, 100), 1.0),
+		new Corner(new Vec2(100, 100), 0.5),
+		new Corner(new Vec2(924, 100), 0.5),
 		new Corner(new Vec2(924, 668), 1.0),
 		new Corner(new Vec2(824, 668), 1.0),
 		new Corner(new Vec2(602, 568), 1.0),
@@ -164,14 +179,14 @@ const tracks: Track[] = [
 	]),
 	new Track([
 		// Counter-clockwise big track
-		new Corner(new Vec2(100, 100), 1.0),
+		new Corner(new Vec2(100, 100), 0.5),
 		new Corner(new Vec2(100, 668), 1.0),
 		new Corner(new Vec2(200, 668), 1.0),
 		new Corner(new Vec2(422, 568), 1.0),
 		new Corner(new Vec2(602, 568), 1.0),
 		new Corner(new Vec2(824, 668), 1.0),
 		new Corner(new Vec2(924, 668), 1.0),
-		new Corner(new Vec2(924, 100), 1.0),
+		new Corner(new Vec2(924, 100), 0.5),
 	]),
 ];
 
