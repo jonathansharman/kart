@@ -88,10 +88,12 @@ class CubicBezier {
 }
 
 class Track {
+	private name: string;
 	private radius: number;
 	private spline: CubicBezier[];
 
-	constructor(radius: number, corners: Corner[]) {
+	constructor(name: string, radius: number, corners: Corner[]) {
+		this.name = name;
 		this.radius = radius;
 		// Build a list of unit offset vectors from each vertex to its control
 		// point in the forward direction.
@@ -127,8 +129,11 @@ class Track {
 		this.drawSplines(this.radius, "black");
 		this.drawSplines(this.radius - TRACK_BORDER, "rgb(60, 60, 60)");
 
-		// Draw Bezier curve "frame" in debug mode.
 		if (debug) {
+			ctx.font = "20pt serif";
+			ctx.fillStyle = "white";
+			ctx.fillText(this.name, 10, 30);
+			// Draw Bezier curve "frames".
 			ctx.lineWidth = 1;
 			let even = true;
 			for (let curve of this.spline) {
@@ -179,8 +184,7 @@ class Car {
 }
 
 const tracks: Track[] = [
-	new Track(TRACK_RADIUS, [
-		// Serpentine
+	new Track("Serpentine", TRACK_RADIUS, [
 		new Corner(new Vec2(100, 100), 0.5),
 		new Corner(new Vec2(100, 668), 0.5),
 		new Corner(new Vec2(250, 668), 1.0),
@@ -194,22 +198,19 @@ const tracks: Track[] = [
 		new Corner(new Vec2(850, 668), 0.5),
 		new Corner(new Vec2(850, 100), 0.5),
 	]),
-	new Track(TRACK_RADIUS, [
-		// Clockwise oval, tight turns
+	new Track("Clockwise oval, tight turns", TRACK_RADIUS, [
 		new Corner(new Vec2(300, 300), 0.0),
 		new Corner(new Vec2(800, 300), 0.0),
 		new Corner(new Vec2(800, 500), 0.0),
 		new Corner(new Vec2(300, 500), 0.0),
 	]),
-	new Track(TRACK_RADIUS, [
-		// Counter-clockwise oval
+	new Track("Counter-clockwise oval", TRACK_RADIUS, [
 		new Corner(new Vec2(300, 300), 1.0),
 		new Corner(new Vec2(300, 500), 1.0),
 		new Corner(new Vec2(800, 500), 1.0),
 		new Corner(new Vec2(800, 300), 1.0),
 	]),
-	new Track(TRACK_RADIUS, [
-		// Clockwise big track, tight turns
+	new Track("Clockwise big track, tight turns", TRACK_RADIUS, [
 		new Corner(new Vec2(100, 100), 0.0),
 		new Corner(new Vec2(924, 100), 0.0),
 		new Corner(new Vec2(924, 668), 0.0),
@@ -219,8 +220,7 @@ const tracks: Track[] = [
 		new Corner(new Vec2(200, 668), 0.0),
 		new Corner(new Vec2(100, 668), 0.0),
 	]),
-	new Track(TRACK_RADIUS, [
-		// Counter-clockwise big track
+	new Track("Counter-clockwise big track", TRACK_RADIUS, [
 		new Corner(new Vec2(100, 100), 0.5),
 		new Corner(new Vec2(100, 668), 1.0),
 		new Corner(new Vec2(200, 668), 1.0),
@@ -229,6 +229,12 @@ const tracks: Track[] = [
 		new Corner(new Vec2(824, 668), 1.0),
 		new Corner(new Vec2(924, 668), 1.0),
 		new Corner(new Vec2(924, 100), 0.5),
+	]),
+	new Track("Degenerate quad (triangle)", TRACK_RADIUS, [
+		new Corner(new Vec2(300, 300), 1.0),
+		new Corner(new Vec2(300, 500), 1.0),
+		new Corner(new Vec2(800, 400), 1.0),
+		new Corner(new Vec2(800, 400), 1.0),
 	]),
 ];
 
