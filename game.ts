@@ -53,8 +53,8 @@ enum ControlScheme {
 }
 
 class Bumper {
-	public radius: number;
-	public pos: Vec2;
+	radius: number;
+	pos: Vec2;
 
 	constructor(radius: number, pos = new Vec2(0.0, 0.0)) {
 		this.radius = radius;
@@ -63,9 +63,9 @@ class Bumper {
 }
 
 class Corner {
-	public vertex: Vec2;
+	vertex: Vec2;
 	// Values outside [0, 1] may result in loops.
-	public smoothness: number;
+	smoothness: number;
 
 	constructor(vertex: Vec2, smoothness: number) {
 		this.vertex = vertex;
@@ -74,10 +74,10 @@ class Corner {
 }
 
 class CubicBezier {
-	public start: Vec2;
-	public end: Vec2;
-	public cp1: Vec2;
-	public cp2: Vec2;
+	start: Vec2;
+	end: Vec2;
+	cp1: Vec2;
+	cp2: Vec2;
 
 	constructor(start: Vec2, end: Vec2, cp1: Vec2, cp2: Vec2) {
 		this.start = start;
@@ -88,9 +88,11 @@ class CubicBezier {
 }
 
 class Track {
-	public spline: CubicBezier[];
+	private radius: number;
+	private spline: CubicBezier[];
 
-	constructor(corners: Corner[]) {
+	constructor(radius: number, corners: Corner[]) {
+		this.radius = radius;
 		// Build a list of unit offset vectors from each vertex to its control
 		// point in the forward direction.
 		let forwardCPOffsets: Vec2[] = [];
@@ -120,16 +122,50 @@ class Track {
 			this.spline.push(new CubicBezier(start, end, cp1, cp2));
 		}
 	}
+
+	draw(debug: boolean) {
+		this.drawSplines(this.radius, "black");
+		this.drawSplines(this.radius - TRACK_BORDER, "rgb(60, 60, 60)");
+
+		// Draw Bezier curve "frame" in debug mode.
+		if (debug) {
+			ctx.lineWidth = 1;
+			let even = true;
+			for (let curve of this.spline) {
+				ctx.strokeStyle = even ? "red" : "white";
+				even = !even;
+				ctx.beginPath();
+				ctx.moveTo(curve.start.x, curve.start.y);
+				ctx.lineTo(curve.cp1.x, curve.cp1.y);
+				ctx.lineTo(curve.cp2.x, curve.cp2.y);
+				ctx.lineTo(curve.end.x, curve.end.y);
+				ctx.stroke();
+			}
+		}
+	}
+
+	private drawSplines(radius: number, style: string) {
+		ctx.beginPath();
+		ctx.strokeStyle = style;
+		const start = this.spline[0].start;
+		ctx.moveTo(start.x, start.y);
+		for (let curve of this.spline) {
+			ctx.bezierCurveTo(curve.cp1.x, curve.cp1.y, curve.cp2.x, curve.cp2.y, curve.end.x, curve.end.y);
+			ctx.lineWidth = 2 * radius;
+		}
+		ctx.closePath();
+		ctx.stroke();
+	}
 }
 
 class Car {
-	public pos: Vec2;
-	public speed: number;
-	public heading: Angle;
-	public steering: number;
+	pos: Vec2;
+	speed: number;
+	heading: Angle;
+	steering: number;
 
-	public frontBumper: Bumper;
-	public backBumper: Bumper;
+	frontBumper: Bumper;
+	backBumper: Bumper;
 
 	constructor() {
 		this.pos = new Vec2(0.0, 0.0);
@@ -143,7 +179,7 @@ class Car {
 }
 
 const tracks: Track[] = [
-	new Track([
+	new Track(TRACK_RADIUS, [
 		// Serpentine
 		new Corner(new Vec2(100, 100), 0.5),
 		new Corner(new Vec2(100, 668), 0.5),
@@ -158,32 +194,32 @@ const tracks: Track[] = [
 		new Corner(new Vec2(850, 668), 0.5),
 		new Corner(new Vec2(850, 100), 0.5),
 	]),
-	new Track([
-		// Clockwise oval
-		new Corner(new Vec2(300, 300), 1.0),
-		new Corner(new Vec2(800, 300), 1.0),
-		new Corner(new Vec2(800, 500), 1.0),
-		new Corner(new Vec2(300, 500), 1.0),
+	new Track(TRACK_RADIUS, [
+		// Clockwise oval, tight turns
+		new Corner(new Vec2(300, 300), 0.0),
+		new Corner(new Vec2(800, 300), 0.0),
+		new Corner(new Vec2(800, 500), 0.0),
+		new Corner(new Vec2(300, 500), 0.0),
 	]),
-	new Track([
+	new Track(TRACK_RADIUS, [
 		// Counter-clockwise oval
 		new Corner(new Vec2(300, 300), 1.0),
 		new Corner(new Vec2(300, 500), 1.0),
 		new Corner(new Vec2(800, 500), 1.0),
 		new Corner(new Vec2(800, 300), 1.0),
 	]),
-	new Track([
-		// Clockwise big track
-		new Corner(new Vec2(100, 100), 0.5),
-		new Corner(new Vec2(924, 100), 0.5),
-		new Corner(new Vec2(924, 668), 1.0),
-		new Corner(new Vec2(824, 668), 1.0),
-		new Corner(new Vec2(602, 568), 1.0),
-		new Corner(new Vec2(422, 568), 1.0),
-		new Corner(new Vec2(200, 668), 1.0),
-		new Corner(new Vec2(100, 668), 1.0),
+	new Track(TRACK_RADIUS, [
+		// Clockwise big track, tight turns
+		new Corner(new Vec2(100, 100), 0.0),
+		new Corner(new Vec2(924, 100), 0.0),
+		new Corner(new Vec2(924, 668), 0.0),
+		new Corner(new Vec2(824, 668), 0.0),
+		new Corner(new Vec2(602, 568), 0.0),
+		new Corner(new Vec2(422, 568), 0.0),
+		new Corner(new Vec2(200, 668), 0.0),
+		new Corner(new Vec2(100, 668), 0.0),
 	]),
-	new Track([
+	new Track(TRACK_RADIUS, [
 		// Counter-clockwise big track
 		new Corner(new Vec2(100, 100), 0.5),
 		new Corner(new Vec2(100, 668), 1.0),
@@ -197,18 +233,19 @@ const tracks: Track[] = [
 ];
 
 class MainScene {
-	public debug: boolean;
+	debug: boolean;
 
-	public controlScheme: ControlScheme;
-	public mousePos: Vec2;
-	public brake: boolean;
-	public gas: boolean;
+	trackIdx: number;
+
+	controlScheme: ControlScheme;
+	mousePos: Vec2;
+	brake: boolean;
+	gas: boolean;
 
 	private cameraPos: Vec2;
 
 	private car: Car;
 
-	private track: Track;
 
 	private walls: Bumper[];
 	private wallBuckets: Bumper[][];
@@ -225,7 +262,7 @@ class MainScene {
 
 		this.car = new Car();
 
-		this.track = tracks[0];
+		this.trackIdx = 0;
 
 		this.addWalls();
 	}
@@ -403,8 +440,7 @@ class MainScene {
 		ctx.rect(0, 0, canvas.width, canvas.height);
 		ctx.fill();
 
-		this.drawTrack(TRACK_RADIUS, "black");
-		this.drawTrack(TRACK_RADIUS - TRACK_BORDER, "rgb(60, 60, 60)");
+		tracks[this.trackIdx].draw(this.debug);
 
 		// Draw walls.
 		for (const wall of this.walls) {
@@ -491,35 +527,6 @@ class MainScene {
 		ctx.lineWidth = 1.0;
 		ctx.stroke();
 	}
-
-	drawTrack(radius, style) {
-		ctx.beginPath();
-		ctx.strokeStyle = style;
-
-		const start = this.track.spline[0].start;
-		ctx.moveTo(start.x, start.y);
-		for (let curve of this.track.spline) {
-			ctx.bezierCurveTo(curve.cp1.x, curve.cp1.y, curve.cp2.x, curve.cp2.y, curve.end.x, curve.end.y);
-			ctx.lineWidth = 2 * radius;
-			ctx.stroke();
-		}
-
-		// Draw Bezier curve "frame" in debug mode.
-		if (this.debug) {
-			ctx.lineWidth = 1;
-			let even = true;
-			for (let curve of this.track.spline) {
-				ctx.strokeStyle = even ? "red" : "white";
-				even = !even;
-				ctx.beginPath();
-				ctx.moveTo(curve.start.x, curve.start.y);
-				ctx.lineTo(curve.cp1.x, curve.cp1.y);
-				ctx.lineTo(curve.cp2.x, curve.cp2.y);
-				ctx.lineTo(curve.end.x, curve.end.y);
-				ctx.stroke();
-			}
-		}
-	}
 }
 
 function drawWheel(pos: Vec2, angle: Angle, radius: number, angleOffset: number) {
@@ -598,6 +605,12 @@ window.onkeydown = (event: KeyboardEvent) => {
 			return false;
 		case "KeyD":
 			mainScene.debug = !mainScene.debug;
+			return false;
+		case "ArrowLeft":
+			mainScene.trackIdx = mod(mainScene.trackIdx - 1, tracks.length);
+			return false;
+		case "ArrowRight":
+			mainScene.trackIdx = mod(mainScene.trackIdx + 1, tracks.length);
 			return false;
 	}
 };
