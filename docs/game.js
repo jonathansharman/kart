@@ -7,24 +7,12 @@ var ON_ROAD_DRAG = 0.01;
 var OFF_ROAD_DRAG = 0.03;
 var WALL_BOUNCE_LOSS = 0.3;
 var MAX_STEERING_ANGLE = Math.PI / 6.0;
-var COLLISION_BUCKET_COLS = 8;
-var COLLISION_BUCKET_WIDTH = canvas.width / COLLISION_BUCKET_COLS;
-var COLLISION_BUCKET_ROWS = canvas.height / COLLISION_BUCKET_WIDTH;
-var TERRAIN_CELL_WIDTH = 10;
-var TERRAIN_CELL_COLS = Math.floor(canvas.width / TERRAIN_CELL_WIDTH);
-var TERRAIN_CELL_ROWS = Math.floor(canvas.height / TERRAIN_CELL_WIDTH);
 var TRACK_RADIUS = 50.0;
 var TRACK_BORDER = 2.0;
 // MouseAxes control scheme constants
 var CONTROL_AREA_WIDTH = 400.0;
 var CONTROL_AREA_HEIGHT = 300.0;
-var CONTROL_AREA_LEFT = 0.5 * (canvas.width - CONTROL_AREA_WIDTH);
-var CONTROL_AREA_RIGHT = CONTROL_AREA_LEFT + CONTROL_AREA_WIDTH;
-var CONTROL_AREA_TOP = 0.5 * (canvas.height - CONTROL_AREA_HEIGHT);
-var CONTROL_AREA_BOTTOM = CONTROL_AREA_TOP + CONTROL_AREA_HEIGHT;
 var DEAD_AREA_WIDTH = 75.0;
-var DEAD_AREA_LEFT = 0.5 * (canvas.width - DEAD_AREA_WIDTH);
-var DEAD_AREA_RIGHT = DEAD_AREA_LEFT + DEAD_AREA_WIDTH;
 var STEERING_WIDTH = 0.5 * (CONTROL_AREA_WIDTH - DEAD_AREA_WIDTH);
 // MouseFollow control scheme constants
 var MAX_SPEED_DISTANCE = 300.0;
@@ -210,34 +198,7 @@ var MainScene = /** @class */ (function () {
     }
     MainScene.prototype.addWalls = function () {
         this.walls = [];
-        this.wallBuckets = [];
-        for (var i = 0; i < COLLISION_BUCKET_COLS * COLLISION_BUCKET_ROWS; ++i) {
-            this.wallBuckets.push([]);
-        }
-        this.addWall(new Bumper(15.0, new Vec2(0.5 * canvas.width, 0.5 * canvas.height)));
-    };
-    MainScene.prototype.addWall = function (wall) {
-        var col = Math.floor(wall.pos.x / COLLISION_BUCKET_WIDTH);
-        var row = Math.floor(wall.pos.y / COLLISION_BUCKET_WIDTH);
-        this.walls.push(wall);
-        this.wallBuckets[row * COLLISION_BUCKET_COLS + col].push(wall);
-    };
-    MainScene.prototype.wallsNear = function (pos) {
-        var centerCol = Math.floor(pos.x / COLLISION_BUCKET_WIDTH);
-        var centerRow = Math.floor(pos.y / COLLISION_BUCKET_WIDTH);
-        var nearbyWalls = [];
-        for (var row = centerRow - 1; row <= centerRow + 1; ++row) {
-            if (row < 0 || COLLISION_BUCKET_ROWS <= row) {
-                continue;
-            }
-            for (var col = centerCol - 1; col <= centerCol + 1; ++col) {
-                if (col < 0 || COLLISION_BUCKET_COLS <= col) {
-                    continue;
-                }
-                nearbyWalls = nearbyWalls.concat(this.wallBuckets[row * COLLISION_BUCKET_COLS + col]);
-            }
-        }
-        return nearbyWalls;
+        this.walls.push(new Bumper(15.0, new Vec2(300.0, 300.0)));
     };
     MainScene.prototype.update = function () {
         // Fall back to mouse controls if the gamepad is disconnected.
@@ -250,12 +211,16 @@ var MainScene = /** @class */ (function () {
         switch (controlScheme) {
             case ControlScheme.MouseAxes:
                 {
+                    var controlAreaTop = 0.5 * (canvas.height - CONTROL_AREA_HEIGHT);
+                    var controlAreaBottom = controlAreaTop + CONTROL_AREA_HEIGHT;
+                    var deadAreaLeft = 0.5 * (canvas.width - DEAD_AREA_WIDTH);
+                    var deadAreaRight = deadAreaLeft + DEAD_AREA_WIDTH;
                     // Left steering: 0 (right) to 1 (left)
-                    var leftSteering = clamp((DEAD_AREA_LEFT - this.mousePos.x) / STEERING_WIDTH, 0.0, 1.0);
+                    var leftSteering = clamp((deadAreaLeft - this.mousePos.x) / STEERING_WIDTH, 0.0, 1.0);
                     // Right steering: 0 (left) to 1 (right)
-                    var rightSteering = clamp((this.mousePos.x - DEAD_AREA_RIGHT) / STEERING_WIDTH, 0.0, 1.0);
+                    var rightSteering = clamp((this.mousePos.x - deadAreaRight) / STEERING_WIDTH, 0.0, 1.0);
                     // Throttle: 0 (bottom) to 1 (top)
-                    throttle = clamp((CONTROL_AREA_BOTTOM - this.mousePos.y) / CONTROL_AREA_HEIGHT, 0.0, 1.0);
+                    throttle = clamp((controlAreaBottom - this.mousePos.y) / CONTROL_AREA_HEIGHT, 0.0, 1.0);
                     // Steering
                     this.car.steering = MAX_STEERING_ANGLE * (rightSteering - leftSteering);
                 }
@@ -338,7 +303,7 @@ var MainScene = /** @class */ (function () {
         return false;
     };
     MainScene.prototype.wallBumperCollision = function (bumper) {
-        for (var _i = 0, _a = this.wallsNear(bumper.pos); _i < _a.length; _i++) {
+        for (var _i = 0, _a = this.walls; _i < _a.length; _i++) {
             var wall = _a[_i];
             var r = bumper.radius + wall.radius;
             var dx = bumper.pos.x - wall.pos.x;
@@ -493,6 +458,14 @@ window.onkeyup = function (event) {
 };
 // Disable context menu on right-click.
 window.oncontextmenu = function () { return false; };
+// Make the canvas fill the window.
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+window.onresize = function () {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    return false;
+};
 // Update loop
 window.setInterval(function () {
     mainScene.update();

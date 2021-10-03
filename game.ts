@@ -11,14 +11,6 @@ const WALL_BOUNCE_LOSS = 0.3;
 
 const MAX_STEERING_ANGLE = Math.PI / 6.0;
 
-const COLLISION_BUCKET_COLS = 8;
-const COLLISION_BUCKET_WIDTH = canvas.width / COLLISION_BUCKET_COLS;
-const COLLISION_BUCKET_ROWS = canvas.height / COLLISION_BUCKET_WIDTH;
-
-const TERRAIN_CELL_WIDTH = 10;
-const TERRAIN_CELL_COLS = Math.floor(canvas.width / TERRAIN_CELL_WIDTH);
-const TERRAIN_CELL_ROWS = Math.floor(canvas.height / TERRAIN_CELL_WIDTH);
-
 const TRACK_RADIUS = 50.0;
 const TRACK_BORDER = 2.0;
 
@@ -26,14 +18,8 @@ const TRACK_BORDER = 2.0;
 
 const CONTROL_AREA_WIDTH = 400.0;
 const CONTROL_AREA_HEIGHT = 300.0;
-const CONTROL_AREA_LEFT = 0.5 * (canvas.width - CONTROL_AREA_WIDTH);
-const CONTROL_AREA_RIGHT = CONTROL_AREA_LEFT + CONTROL_AREA_WIDTH;
-const CONTROL_AREA_TOP = 0.5 * (canvas.height - CONTROL_AREA_HEIGHT);
-const CONTROL_AREA_BOTTOM = CONTROL_AREA_TOP + CONTROL_AREA_HEIGHT;
 
 const DEAD_AREA_WIDTH = 75.0;
-const DEAD_AREA_LEFT = 0.5 * (canvas.width - DEAD_AREA_WIDTH);
-const DEAD_AREA_RIGHT = DEAD_AREA_LEFT + DEAD_AREA_WIDTH;
 
 const STEERING_WIDTH = 0.5 * (CONTROL_AREA_WIDTH - DEAD_AREA_WIDTH);
 
@@ -275,36 +261,7 @@ class MainScene {
 
 	addWalls() {
 		this.walls = [];
-		this.wallBuckets = [];
-		for (let i = 0; i < COLLISION_BUCKET_COLS * COLLISION_BUCKET_ROWS; ++i) {
-			this.wallBuckets.push([]);
-		}
-		this.addWall(new Bumper(15.0, new Vec2(0.5 * canvas.width, 0.5 * canvas.height)));
-	}
-
-	addWall(wall: Bumper) {
-		const col = Math.floor(wall.pos.x / COLLISION_BUCKET_WIDTH);
-		const row = Math.floor(wall.pos.y / COLLISION_BUCKET_WIDTH);
-		this.walls.push(wall);
-		this.wallBuckets[row * COLLISION_BUCKET_COLS + col].push(wall);
-	}
-
-	wallsNear(pos: Vec2): Bumper[] {
-		const centerCol = Math.floor(pos.x / COLLISION_BUCKET_WIDTH);
-		const centerRow = Math.floor(pos.y / COLLISION_BUCKET_WIDTH);
-		let nearbyWalls = [];
-		for (let row = centerRow - 1; row <= centerRow + 1; ++row) {
-			if (row < 0 || COLLISION_BUCKET_ROWS <= row) {
-				continue;
-			}
-			for (let col = centerCol - 1; col <= centerCol + 1; ++col) {
-				if (col < 0 || COLLISION_BUCKET_COLS <= col) {
-					continue;
-				}
-				nearbyWalls = nearbyWalls.concat(this.wallBuckets[row * COLLISION_BUCKET_COLS + col]);
-			}
-		}
-		return nearbyWalls;
+		this.walls.push(new Bumper(15.0, new Vec2(300.0, 300.0)));
 	}
 
 	update() {
@@ -319,12 +276,16 @@ class MainScene {
 		switch (controlScheme) {
 			case ControlScheme.MouseAxes:
 				{
+					const controlAreaTop = 0.5 * (canvas.height - CONTROL_AREA_HEIGHT);
+					const controlAreaBottom = controlAreaTop + CONTROL_AREA_HEIGHT;
+					const deadAreaLeft = 0.5 * (canvas.width - DEAD_AREA_WIDTH);
+					const deadAreaRight = deadAreaLeft + DEAD_AREA_WIDTH;
 					// Left steering: 0 (right) to 1 (left)
-					const leftSteering = clamp((DEAD_AREA_LEFT - this.mousePos.x) / STEERING_WIDTH, 0.0, 1.0);
+					const leftSteering = clamp((deadAreaLeft - this.mousePos.x) / STEERING_WIDTH, 0.0, 1.0);
 					// Right steering: 0 (left) to 1 (right)
-					const rightSteering = clamp((this.mousePos.x - DEAD_AREA_RIGHT) / STEERING_WIDTH, 0.0, 1.0);
+					const rightSteering = clamp((this.mousePos.x - deadAreaRight) / STEERING_WIDTH, 0.0, 1.0);
 					// Throttle: 0 (bottom) to 1 (top)
-					throttle = clamp((CONTROL_AREA_BOTTOM - this.mousePos.y) / CONTROL_AREA_HEIGHT, 0.0, 1.0);
+					throttle = clamp((controlAreaBottom - this.mousePos.y) / CONTROL_AREA_HEIGHT, 0.0, 1.0);
 					// Steering
 					this.car.steering = MAX_STEERING_ANGLE * (rightSteering - leftSteering);
 				}
@@ -424,7 +385,7 @@ class MainScene {
 	}
 
 	wallBumperCollision(bumper: Bumper) {
-		for (let wall of this.wallsNear(bumper.pos)) {
+		for (let wall of this.walls) {
 			const r = bumper.radius + wall.radius;
 			const dx = bumper.pos.x - wall.pos.x;
 			const dy = bumper.pos.y - wall.pos.y;
@@ -635,6 +596,15 @@ window.onkeyup = (event: KeyboardEvent) => {
 
 // Disable context menu on right-click.
 window.oncontextmenu = () => false;
+
+// Make the canvas fill the window.
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+window.onresize = () => {
+	canvas.width = window.innerWidth;
+	canvas.height = window.innerHeight;
+	return false;
+}
 
 // Update loop
 window.setInterval(() => {
