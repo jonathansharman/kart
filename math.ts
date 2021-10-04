@@ -1,18 +1,18 @@
 // Supplementary math utilities.
 
-const TAU = 2 * Math.PI;
+export const TAU = 2 * Math.PI;
 
-const clamp = (n: number, min: number, max: number): number => {
+export const clamp = (n: number, min: number, max: number): number => {
 	return Math.max(min, Math.min(max, n));
 }
 
 // Mathematical modulus. 0 <= (x mod m) < m for m > 0.
-const mod = (x: number, m: number): number => {
+export const mod = (x: number, m: number): number => {
 	return (x % m + m) % m;
 }
 
 // 2D vector.
-class Vec2 {
+export class Vec2 {
 	public x: number;
 	public y: number;
 
@@ -73,7 +73,7 @@ class Vec2 {
 }
 
 // 2D line segment from start to end.
-class Segment2 {
+export class Segment2 {
 	public start: Vec2;
 	public end: Vec2;
 	private offset: Vec2;
@@ -95,7 +95,7 @@ class Segment2 {
 }
 
 // Maintains an angle in radians, normalized to [0, tau).
-class Angle {
+export class Angle {
 	private radians: number;
 
 	constructor(radians: number) {

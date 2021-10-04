@@ -1,3 +1,6 @@
+import { Bumper } from "./bumper.js";
+import { Kart } from "./kart.js";
+import { Angle, clamp, mod, Vec2 } from "./math.js";
 var UPDATES_PER_SEC = 60.0;
 var MS_PER_UPDATE = 1000.0 / UPDATES_PER_SEC;
 var canvas = document.getElementById("canvas");
@@ -25,14 +28,6 @@ var ControlScheme;
     ControlScheme[ControlScheme["MouseFollow"] = 1] = "MouseFollow";
     ControlScheme[ControlScheme["GamepadFollow"] = 2] = "GamepadFollow";
 })(ControlScheme || (ControlScheme = {}));
-var Bumper = /** @class */ (function () {
-    function Bumper(radius, pos) {
-        if (pos === void 0) { pos = new Vec2(0.0, 0.0); }
-        this.radius = radius;
-        this.pos = pos;
-    }
-    return Bumper;
-}());
 var Corner = /** @class */ (function () {
     function Corner(vertex, smoothness) {
         this.vertex = vertex;
@@ -119,17 +114,6 @@ var Track = /** @class */ (function () {
     };
     return Track;
 }());
-var Car = /** @class */ (function () {
-    function Car() {
-        this.pos = new Vec2(0.0, 0.0);
-        this.speed = 0.0;
-        this.heading = new Angle(0.0);
-        this.steering = 0.0;
-        this.frontBumper = new Bumper(15.0);
-        this.backBumper = new Bumper(10.0);
-    }
-    return Car;
-}());
 var tracks = [
     new Track("Serpentine", TRACK_RADIUS, [
         new Corner(new Vec2(100, 100), 0.5),
@@ -192,7 +176,7 @@ var MainScene = /** @class */ (function () {
         this.brake = false;
         this.gas = false;
         this.cameraPos = new Vec2(0.0, 0.0);
-        this.car = new Car();
+        this.kart = new Kart();
         this.trackIdx = 0;
         this.addWalls();
     }
@@ -222,16 +206,16 @@ var MainScene = /** @class */ (function () {
                     // Throttle: 0 (bottom) to 1 (top)
                     throttle = clamp((controlAreaBottom - this.mousePos.y) / CONTROL_AREA_HEIGHT, 0.0, 1.0);
                     // Steering
-                    this.car.steering = MAX_STEERING_ANGLE * (rightSteering - leftSteering);
+                    this.kart.steering = MAX_STEERING_ANGLE * (rightSteering - leftSteering);
                 }
                 break;
             case ControlScheme.MouseFollow:
                 {
-                    var offset = this.mousePos.minus(this.car.pos);
+                    var offset = this.mousePos.minus(this.kart.pos);
                     var angle = Angle.fromVec2(offset);
                     var distance = offset.length();
                     throttle = Math.min(MAX_SPEED_DISTANCE, distance) / MAX_SPEED_DISTANCE;
-                    this.car.steering = clamp(this.car.heading.smallestAngleTo(angle).getNegativePiToPi(), -MAX_STEERING_ANGLE, MAX_STEERING_ANGLE);
+                    this.kart.steering = clamp(this.kart.heading.smallestAngleTo(angle).getNegativePiToPi(), -MAX_STEERING_ANGLE, MAX_STEERING_ANGLE);
                 }
                 break;
             case ControlScheme.GamepadFollow:
@@ -241,53 +225,53 @@ var MainScene = /** @class */ (function () {
                     var length_1 = offset.length();
                     if (length_1 > STICK_DEAD_RADIUS) {
                         throttle = Math.min(1.0, (length_1 - STICK_DEAD_RADIUS) / (1.0 - STICK_DEAD_RADIUS));
-                        this.car.steering = clamp(this.car.heading.smallestAngleTo(angle).getNegativePiToPi(), -MAX_STEERING_ANGLE, MAX_STEERING_ANGLE);
+                        this.kart.steering = clamp(this.kart.heading.smallestAngleTo(angle).getNegativePiToPi(), -MAX_STEERING_ANGLE, MAX_STEERING_ANGLE);
                         this.gas = true;
                     }
                     else {
                         this.gas = false;
-                        this.car.steering *= STICK_STEERING_DRAG;
+                        this.kart.steering *= STICK_STEERING_DRAG;
                     }
                 }
                 break;
         }
         // Gas and brake
         if (this.brake) {
-            this.car.speed -= ACCELERATION * (1.0 - throttle);
+            this.kart.speed -= ACCELERATION * (1.0 - throttle);
         }
         if (this.gas) {
-            this.car.speed += ACCELERATION * throttle;
+            this.kart.speed += ACCELERATION * throttle;
         }
         // Drag
         var drag = this.offRoad() ? OFF_ROAD_DRAG : ON_ROAD_DRAG;
-        this.car.speed -= drag * this.car.speed;
+        this.kart.speed -= drag * this.kart.speed;
         // Change in heading
-        this.car.heading = this.car.heading.plus(this.car.steering * this.car.speed / 50.0);
-        var vx = this.car.speed * this.car.heading.cos();
-        var vy = this.car.speed * this.car.heading.sin();
-        this.car.pos.x += vx;
-        this.car.pos.y += vy;
-        while (this.car.pos.x < 0.0) {
-            this.car.pos.x += canvas.width;
+        this.kart.heading = this.kart.heading.plus(this.kart.steering * this.kart.speed / 50.0);
+        var vx = this.kart.speed * this.kart.heading.cos();
+        var vy = this.kart.speed * this.kart.heading.sin();
+        this.kart.pos.x += vx;
+        this.kart.pos.y += vy;
+        while (this.kart.pos.x < 0.0) {
+            this.kart.pos.x += canvas.width;
         }
-        while (this.car.pos.x > canvas.width) {
-            this.car.pos.x -= canvas.width;
+        while (this.kart.pos.x > canvas.width) {
+            this.kart.pos.x -= canvas.width;
         }
-        while (this.car.pos.y < 0.0) {
-            this.car.pos.y += canvas.height;
+        while (this.kart.pos.y < 0.0) {
+            this.kart.pos.y += canvas.height;
         }
-        while (this.car.pos.y > canvas.height) {
-            this.car.pos.y -= canvas.height;
+        while (this.kart.pos.y > canvas.height) {
+            this.kart.pos.y -= canvas.height;
         }
-        this.car.frontBumper.pos.x = this.car.pos.x + 20.0 * this.car.heading.cos();
-        this.car.frontBumper.pos.y = this.car.pos.y + 20.0 * this.car.heading.sin();
-        this.car.backBumper.pos.x = this.car.pos.x - 20.0 * this.car.heading.cos();
-        this.car.backBumper.pos.y = this.car.pos.y - 20.0 * this.car.heading.sin();
-        this.wallBumperCollision(this.car.frontBumper);
-        this.wallBumperCollision(this.car.backBumper);
-        // The camera leads the car.
-        //this.cameraPos = new Vec2(this.car.pos.x + 20.0 * vx, this.car.pos.y + 20.0 * vy);
-        //this.cameraPos = this.car.pos;
+        this.kart.frontBumper.pos.x = this.kart.pos.x + 20.0 * this.kart.heading.cos();
+        this.kart.frontBumper.pos.y = this.kart.pos.y + 20.0 * this.kart.heading.sin();
+        this.kart.backBumper.pos.x = this.kart.pos.x - 20.0 * this.kart.heading.cos();
+        this.kart.backBumper.pos.y = this.kart.pos.y - 20.0 * this.kart.heading.sin();
+        this.wallBumperCollision(this.kart.frontBumper);
+        this.wallBumperCollision(this.kart.backBumper);
+        // The camera leads the kart.
+        //this.cameraPos = new Vec2(this.kart.pos.x + 20.0 * vx, this.kart.pos.y + 20.0 * vy);
+        //this.cameraPos = this.kart.pos;
     };
     MainScene.prototype.offRoad = function () {
         // TODO: Collision detection with track's bezier curves
@@ -295,7 +279,7 @@ var MainScene = /** @class */ (function () {
         // 	const start = this.trackPoints[i];
         // 	const end = this.trackPoints[(i + 1) % this.trackPoints.length];
         // 	const segment = new Segment2(start, end);
-        // 	if (segment.pointDistance2(this.car.pos) < TRACK_RADIUS * TRACK_RADIUS) {
+        // 	if (segment.pointDistance2(this.kart.pos) < TRACK_RADIUS * TRACK_RADIUS) {
         // 		return false;
         // 	}
         // }
@@ -310,11 +294,11 @@ var MainScene = /** @class */ (function () {
             var dy = bumper.pos.y - wall.pos.y;
             var d2 = dx * dx + dy * dy;
             if (d2 != 0.0 && d2 < r * r) {
-                this.car.speed = -(1.0 - WALL_BOUNCE_LOSS) * this.car.speed;
+                this.kart.speed = -(1.0 - WALL_BOUNCE_LOSS) * this.kart.speed;
                 var d = Math.sqrt(d2);
                 var factor = (r - d) / d;
-                this.car.pos.x += dx * factor;
-                this.car.pos.y += dy * factor;
+                this.kart.pos.x += dx * factor;
+                this.kart.pos.y += dy * factor;
             }
         }
     };
@@ -328,9 +312,9 @@ var MainScene = /** @class */ (function () {
         // Draw walls.
         for (var _i = 0, _a = this.walls; _i < _a.length; _i++) {
             var wall = _a[_i];
-            drawBumper(wall);
+            wall.draw(ctx);
         }
-        this.drawCar();
+        this.kart.draw(ctx, this.cameraPos, this.debug);
         // Draw control area when in MouseAxes control mode.
         if (this.controlScheme == ControlScheme.MouseAxes) {
             ctx.strokeStyle = "black";
@@ -349,56 +333,8 @@ var MainScene = /** @class */ (function () {
             _this.draw(timestamp);
         });
     };
-    MainScene.prototype.drawCar = function () {
-        var x = this.car.pos.x - this.cameraPos.x;
-        var y = this.car.pos.y - this.cameraPos.y;
-        var frontOffset = 25.0;
-        var backOffset = 20.0;
-        var frontAngleOffset = Math.PI / 10.0;
-        var backAngleOffset = Math.PI / 5.0;
-        var frontRight = new Vec2(x + frontOffset * this.car.heading.plus(frontAngleOffset).cos(), y + frontOffset * this.car.heading.plus(frontAngleOffset).sin());
-        var frontLeft = new Vec2(x + frontOffset * this.car.heading.minus(frontAngleOffset).cos(), y + frontOffset * this.car.heading.minus(frontAngleOffset).sin());
-        var backLeft = new Vec2(x + backOffset * this.car.heading.plus(Math.PI + backAngleOffset).cos(), y + backOffset * this.car.heading.plus(backAngleOffset + Math.PI).sin());
-        var backRight = new Vec2(x + backOffset * this.car.heading.plus(Math.PI - backAngleOffset).cos(), y + backOffset * this.car.heading.minus(backAngleOffset - Math.PI).sin());
-        if (this.debug) {
-            drawBumper(this.car.frontBumper);
-            drawBumper(this.car.backBumper);
-        }
-        var wheelRadius = 8.0;
-        drawWheel(frontRight, this.car.heading.plus(this.car.steering), wheelRadius, Math.PI / 6.0);
-        drawWheel(frontLeft, this.car.heading.plus(this.car.steering), wheelRadius, Math.PI / 6.0);
-        drawWheel(backLeft, this.car.heading, wheelRadius, Math.PI / 6.0);
-        drawWheel(backRight, this.car.heading, wheelRadius, Math.PI / 6.0);
-        ctx.beginPath();
-        ctx.moveTo(frontRight.x, frontRight.y);
-        ctx.lineTo(frontLeft.x, frontLeft.y);
-        ctx.lineTo(backLeft.x, backLeft.y);
-        ctx.lineTo(backRight.x, backRight.y);
-        ctx.closePath();
-        ctx.fillStyle = "rgb(180, 0, 0)";
-        ctx.fill();
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = 1.0;
-        ctx.stroke();
-    };
     return MainScene;
 }());
-function drawWheel(pos, angle, radius, angleOffset) {
-    ctx.fillStyle = "black";
-    ctx.beginPath();
-    ctx.moveTo(pos.x + radius * angle.plus(angleOffset).cos(), pos.y + radius * angle.plus(angleOffset).sin());
-    ctx.lineTo(pos.x + radius * angle.minus(angleOffset).cos(), pos.y + radius * angle.minus(angleOffset).sin());
-    ctx.lineTo(pos.x + radius * angle.plus(angleOffset + Math.PI).cos(), pos.y + radius * angle.plus(angleOffset - Math.PI).sin());
-    ctx.lineTo(pos.x + radius * angle.minus(angleOffset - Math.PI).cos(), pos.y + radius * angle.minus(angleOffset - Math.PI).sin());
-    ctx.closePath();
-    ctx.fill();
-}
-function drawBumper(bumper) {
-    ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
-    ctx.beginPath();
-    ctx.ellipse(bumper.pos.x, bumper.pos.y, bumper.radius, bumper.radius, 0.0, 0.0, 2.0 * Math.PI);
-    ctx.fill();
-}
 var mainScene = new MainScene();
 window.onmousemove = function (event) {
     var rect = canvas.getBoundingClientRect();

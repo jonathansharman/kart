@@ -1,10 +1,10 @@
 // Supplementary math utilities.
-var TAU = 2 * Math.PI;
-var clamp = function (n, min, max) {
+export var TAU = 2 * Math.PI;
+export var clamp = function (n, min, max) {
     return Math.max(min, Math.min(max, n));
 };
 // Mathematical modulus. 0 <= (x mod m) < m for m > 0.
-var mod = function (x, m) {
+export var mod = function (x, m) {
     return (x % m + m) % m;
 };
 // 2D vector.
@@ -53,6 +53,7 @@ var Vec2 = /** @class */ (function () {
     };
     return Vec2;
 }());
+export { Vec2 };
 // 2D line segment from start to end.
 var Segment2 = /** @class */ (function () {
     function Segment2(start, end) {
@@ -70,6 +71,7 @@ var Segment2 = /** @class */ (function () {
     };
     return Segment2;
 }());
+export { Segment2 };
 // Maintains an angle in radians, normalized to [0, tau).
 var Angle = /** @class */ (function () {
     function Angle(radians) {
@@ -120,3 +122,4 @@ var Angle = /** @class */ (function () {
     };
     return Angle;
 }());
+export { Angle };
