@@ -123,3 +123,13 @@ var Angle = /** @class */ (function () {
     return Angle;
 }());
 export { Angle };
+var CubicBezier = /** @class */ (function () {
+    function CubicBezier(start, end, cp1, cp2) {
+        this.start = start;
+        this.end = end;
+        this.cp1 = cp1;
+        this.cp2 = cp2;
+    }
+    return CubicBezier;
+}());
+export { CubicBezier };
