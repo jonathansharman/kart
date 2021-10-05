@@ -67,12 +67,12 @@ var Track = /** @class */ (function () {
         ctx.beginPath();
         ctx.lineJoin = "round";
         ctx.strokeStyle = style;
+        ctx.lineWidth = 2 * radius;
         var start = this.spline[0].start;
         ctx.moveTo(start.x, start.y);
         for (var _i = 0, _a = this.spline; _i < _a.length; _i++) {
             var curve = _a[_i];
             ctx.bezierCurveTo(curve.cp1.x, curve.cp1.y, curve.cp2.x, curve.cp2.y, curve.end.x, curve.end.y);
-            ctx.lineWidth = 2 * radius;
         }
         ctx.closePath();
         ctx.stroke();
