@@ -10,8 +10,8 @@ const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d");
 
 const ACCELERATION = 0.05;
-const ON_ROAD_DRAG = 0.01;
-const OFF_ROAD_DRAG = 0.03;
+const ON_TRACK_DRAG = 0.01;
+const OFF_TRACK_DRAG = 0.03;
 const WALL_BOUNCE_LOSS = 0.3;
 
 const MAX_STEERING_ANGLE = Math.PI / 6.0;
@@ -116,6 +116,8 @@ class MainScene {
 		new Bumper(15.0, new Vec2(300.0, 300.0)),
 	];
 
+	private onTrack: boolean;
+
 	update() {
 		// Fall back to mouse controls if the gamepad is disconnected.
 		let controlScheme = this.controlScheme;
@@ -183,14 +185,14 @@ class MainScene {
 			this.kart.speed += ACCELERATION * throttle;
 		}
 
-		// Drag
-		const drag = this.offRoad() ? OFF_ROAD_DRAG : ON_ROAD_DRAG;
-		this.kart.speed -= drag * this.kart.speed;
-		// Change in heading
-		this.kart.heading = this.kart.heading.plus(this.kart.steering * this.kart.speed / 50.0);
+		this.onTrack = tracks[this.trackIdx].containsPoint(this.kart.pos);
 
-		let v = Vec2.fromPolar(this.kart.speed, this.kart.heading);
-		this.kart.pos = this.kart.pos.plus(v);
+		// Drag
+		const drag = this.onTrack ? ON_TRACK_DRAG : OFF_TRACK_DRAG;
+		this.kart.speed -= drag * this.kart.speed;
+		// Update heading and position.
+		this.kart.heading = this.kart.heading.plus(this.kart.steering * this.kart.speed / 50.0);
+		this.kart.pos = this.kart.pos.plus(Vec2.fromPolar(this.kart.speed, this.kart.heading));
 
 		const offset = Vec2.fromPolar(20.0, this.kart.heading);
 		this.kart.frontBumper.pos = this.kart.pos.plus(offset);
@@ -204,20 +206,6 @@ class MainScene {
 		this.mousePosWorld = mainScene.mousePosClient
 			.plus(mainScene.camera)
 			.minus(new Vec2(0.5 * canvas.width, 0.5 * canvas.height));
-	}
-
-	offRoad(): boolean {
-		// TODO: Collision detection with track's bezier curves
-		// for (let i = 0; i < this.track.length; ++i) {
-		// 	const start = this.trackPoints[i];
-		// 	const end = this.trackPoints[(i + 1) % this.trackPoints.length];
-		// 	const segment = new Segment2(start, end);
-		// 	if (segment.pointDistance2(this.kart.pos) < TRACK_RADIUS * TRACK_RADIUS) {
-		// 		return false;
-		// 	}
-		// }
-		// return true;
-		return false;
 	}
 
 	wallBumperCollision(bumper: Bumper) {
@@ -279,6 +267,19 @@ class MainScene {
 
 	private drawUI() {
 		tracks[this.trackIdx].drawUI(ctx, this.debug);
+
+		if (this.debug) {
+			ctx.font = "20pt serif";
+			const x = 10;
+			const y = 70;
+			if (this.onTrack) {
+				ctx.fillStyle = "cyan";
+				ctx.fillText("On track", x, y);
+			} else {
+				ctx.fillStyle = "red";
+				ctx.fillText("Off track", x, y);
+			}
+		}
 
 		// Draw control area when in MouseAxes control mode.
 		if (this.controlScheme == ControlScheme.MouseAxes) {

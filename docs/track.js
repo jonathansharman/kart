@@ -40,18 +40,40 @@ var Track = /** @class */ (function () {
             this.spline.push(new CubicBezier(start, end, cp1, cp2));
         }
     }
+    Track.prototype.containsPoint = function (p) {
+        for (var _i = 0, _a = this.spline; _i < _a.length; _i++) {
+            var curve = _a[_i];
+            if (curve.projectPoint(p).minus(p).length2() < this.radius * this.radius) {
+                return true;
+            }
+        }
+        return false;
+    };
     Track.prototype.drawWorld = function (ctx, debug) {
-        this.drawSplines(ctx, this.radius, "black");
-        this.drawSplines(ctx, this.radius - TRACK_BORDER, "rgb(60, 60, 60)");
+        this.drawSpline(ctx, this.radius, "black");
+        this.drawSpline(ctx, this.radius - TRACK_BORDER, "rgb(60, 60, 60)");
         if (debug) {
-            // Draw Bezier curve "frames".
             ctx.lineWidth = 1;
             var even = true;
             for (var _i = 0, _a = this.spline; _i < _a.length; _i++) {
                 var curve = _a[_i];
+                // Draw some points along the curve.
+                ctx.beginPath();
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = "black";
+                ctx.moveTo(curve.start.x, curve.start.y);
+                var nSamples = 10;
+                for (var i = 0; i < nSamples; ++i) {
+                    var t = i / (nSamples - 1);
+                    var p = curve.at(t);
+                    ctx.lineTo(p.x, p.y);
+                }
+                ctx.stroke();
+                // Draw Bezier curve "frame".
                 ctx.strokeStyle = even ? "red" : "white";
                 even = !even;
                 ctx.beginPath();
+                ctx.lineWidth = 2;
                 ctx.moveTo(curve.start.x, curve.start.y);
                 ctx.lineTo(curve.cp1.x, curve.cp1.y);
                 ctx.lineTo(curve.cp2.x, curve.cp2.y);
@@ -67,7 +89,7 @@ var Track = /** @class */ (function () {
             ctx.fillText(this.name, 10, 30);
         }
     };
-    Track.prototype.drawSplines = function (ctx, radius, style) {
+    Track.prototype.drawSpline = function (ctx, radius, style) {
         ctx.beginPath();
         ctx.lineJoin = "round";
         ctx.strokeStyle = style;

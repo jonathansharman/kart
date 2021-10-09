@@ -133,6 +133,29 @@ var CubicBezier = /** @class */ (function () {
         this.cp1 = cp1;
         this.cp2 = cp2;
     }
+    // The point on the curve at the given t in [0, 1].
+    CubicBezier.prototype.at = function (t) {
+        return this.start.times((1 - t) * (1 - t) * (1 - t))
+            .plus(this.cp1.times(3 * (1 - t) * (1 - t) * t))
+            .plus(this.cp2.times(3 * (1 - t) * t * t))
+            .plus(this.end.times(t * t * t));
+    };
+    // The point on this Bezier curve closest to the given point, based on
+    // sampling. The number of samples must be a positive integer.
+    CubicBezier.prototype.projectPoint = function (p, nSamples) {
+        if (nSamples === void 0) { nSamples = 100; }
+        var minD2 = Infinity;
+        var closest;
+        for (var i = 0; i < nSamples; ++i) {
+            var q = this.at(i / (nSamples - 1));
+            var d2 = q.minus(p).length2();
+            if (d2 < minD2) {
+                minD2 = d2;
+                closest = q;
+            }
+        }
+        return closest;
+    };
     return CubicBezier;
 }());
 export { CubicBezier };

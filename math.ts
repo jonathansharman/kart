@@ -174,4 +174,28 @@ export class CubicBezier {
 		this.cp1 = cp1;
 		this.cp2 = cp2;
 	}
+
+	// The point on the curve at the given t in [0, 1].
+	at(t: number): Vec2 {
+		return this.start.times((1 - t) * (1 - t) * (1 - t))
+			.plus(this.cp1.times(3 * (1 - t) * (1 - t) * t))
+			.plus(this.cp2.times(3 * (1 - t) * t * t))
+			.plus(this.end.times(t * t * t));
+	}
+
+	// The point on this Bezier curve closest to the given point, based on
+	// sampling. The number of samples must be a positive integer.
+	projectPoint(p: Vec2, nSamples: number = 100): Vec2 {
+		let minD2 = Infinity;
+		let closest: Vec2;
+		for (let i = 0; i < nSamples; ++i) {
+			const q = this.at(i / (nSamples - 1));
+			const d2 = q.minus(p).length2();
+			if (d2 < minD2) {
+				minD2 = d2;
+				closest = q;
+			}
+		}
+		return closest;
+	}
 }
