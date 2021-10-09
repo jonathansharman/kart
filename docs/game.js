@@ -7,8 +7,8 @@ var MS_PER_UPDATE = 1000.0 / UPDATES_PER_SEC;
 var canvas = document.getElementById("canvas");
 var ctx = canvas.getContext("2d");
 var ACCELERATION = 0.05;
-var ON_ROAD_DRAG = 0.01;
-var OFF_ROAD_DRAG = 0.03;
+var ON_TRACK_DRAG = 0.01;
+var OFF_TRACK_DRAG = 0.03;
 var WALL_BOUNCE_LOSS = 0.3;
 var MAX_STEERING_ANGLE = Math.PI / 6.0;
 var TRACK_RADIUS = 50.0;
@@ -155,13 +155,13 @@ var MainScene = /** @class */ (function () {
         if (this.gas) {
             this.kart.speed += ACCELERATION * throttle;
         }
+        this.onTrack = tracks[this.trackIdx].containsPoint(this.kart.pos);
         // Drag
-        var drag = this.offRoad() ? OFF_ROAD_DRAG : ON_ROAD_DRAG;
+        var drag = this.onTrack ? ON_TRACK_DRAG : OFF_TRACK_DRAG;
         this.kart.speed -= drag * this.kart.speed;
-        // Change in heading
+        // Update heading and position.
         this.kart.heading = this.kart.heading.plus(this.kart.steering * this.kart.speed / 50.0);
-        var v = Vec2.fromPolar(this.kart.speed, this.kart.heading);
-        this.kart.pos = this.kart.pos.plus(v);
+        this.kart.pos = this.kart.pos.plus(Vec2.fromPolar(this.kart.speed, this.kart.heading));
         var offset = Vec2.fromPolar(20.0, this.kart.heading);
         this.kart.frontBumper.pos = this.kart.pos.plus(offset);
         this.kart.backBumper.pos = this.kart.pos.minus(offset);
@@ -171,19 +171,6 @@ var MainScene = /** @class */ (function () {
         this.mousePosWorld = mainScene.mousePosClient
             .plus(mainScene.camera)
             .minus(new Vec2(0.5 * canvas.width, 0.5 * canvas.height));
-    };
-    MainScene.prototype.offRoad = function () {
-        // TODO: Collision detection with track's bezier curves
-        // for (let i = 0; i < this.track.length; ++i) {
-        // 	const start = this.trackPoints[i];
-        // 	const end = this.trackPoints[(i + 1) % this.trackPoints.length];
-        // 	const segment = new Segment2(start, end);
-        // 	if (segment.pointDistance2(this.kart.pos) < TRACK_RADIUS * TRACK_RADIUS) {
-        // 		return false;
-        // 	}
-        // }
-        // return true;
-        return false;
     };
     MainScene.prototype.wallBumperCollision = function (bumper) {
         for (var _i = 0, _a = this.walls; _i < _a.length; _i++) {
@@ -237,6 +224,19 @@ var MainScene = /** @class */ (function () {
     };
     MainScene.prototype.drawUI = function () {
         tracks[this.trackIdx].drawUI(ctx, this.debug);
+        if (this.debug) {
+            ctx.font = "20pt serif";
+            var x = 10;
+            var y = 70;
+            if (this.onTrack) {
+                ctx.fillStyle = "cyan";
+                ctx.fillText("On track", x, y);
+            }
+            else {
+                ctx.fillStyle = "red";
+                ctx.fillText("Off track", x, y);
+            }
+        }
         // Draw control area when in MouseAxes control mode.
         if (this.controlScheme == ControlScheme.MouseAxes) {
             ctx.strokeStyle = "black";

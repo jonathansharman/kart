@@ -1,4 +1,4 @@
-import { CubicBezier, Vec2 } from "./math.js"
+import { CubicBezier, TAU, Vec2 } from "./math.js"
 
 const TRACK_BORDER = 2.0;
 
@@ -51,18 +51,41 @@ export class Track {
 		}
 	}
 
+	containsPoint(p: Vec2): boolean {
+		for (let curve of this.spline) {
+			if (curve.projectPoint(p).minus(p).length2() < this.radius * this.radius) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	drawWorld(ctx: CanvasRenderingContext2D, debug: boolean) {
-		this.drawSplines(ctx, this.radius, "black");
-		this.drawSplines(ctx, this.radius - TRACK_BORDER, "rgb(60, 60, 60)");
+		this.drawSpline(ctx, this.radius, "black");
+		this.drawSpline(ctx, this.radius - TRACK_BORDER, "rgb(60, 60, 60)");
 
 		if (debug) {
-			// Draw Bezier curve "frames".
 			ctx.lineWidth = 1;
 			let even = true;
 			for (let curve of this.spline) {
+				// Draw some points along the curve.
+				ctx.beginPath();
+				ctx.lineWidth = 1;
+				ctx.strokeStyle = "black";
+				ctx.moveTo(curve.start.x, curve.start.y);
+				const nSamples = 10;
+				for (let i = 0; i < nSamples; ++i) {
+					const t = i / (nSamples - 1);
+					const p = curve.at(t);
+					ctx.lineTo(p.x, p.y);
+				}
+				ctx.stroke();
+
+				// Draw Bezier curve "frame".
 				ctx.strokeStyle = even ? "red" : "white";
 				even = !even;
 				ctx.beginPath();
+				ctx.lineWidth = 2;
 				ctx.moveTo(curve.start.x, curve.start.y);
 				ctx.lineTo(curve.cp1.x, curve.cp1.y);
 				ctx.lineTo(curve.cp2.x, curve.cp2.y);
@@ -80,7 +103,7 @@ export class Track {
 		}
 	}
 
-	private drawSplines(ctx: CanvasRenderingContext2D, radius: number, style: string) {
+	private drawSpline(ctx: CanvasRenderingContext2D, radius: number, style: string) {
 		ctx.beginPath();
 		ctx.lineJoin = "round";
 		ctx.strokeStyle = style;
