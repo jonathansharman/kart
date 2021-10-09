@@ -1,6 +1,7 @@
 import { Bumper } from "./bumper.js";
 import { Kart } from "./kart.js";
 import { Angle, clamp, mod, Vec2 } from "./math.js";
+import { Corner, Track } from "./track.js";
 var UPDATES_PER_SEC = 60.0;
 var MS_PER_UPDATE = 1000.0 / UPDATES_PER_SEC;
 var canvas = document.getElementById("canvas");
@@ -11,7 +12,6 @@ var OFF_ROAD_DRAG = 0.03;
 var WALL_BOUNCE_LOSS = 0.3;
 var MAX_STEERING_ANGLE = Math.PI / 6.0;
 var TRACK_RADIUS = 50.0;
-var TRACK_BORDER = 2.0;
 // MouseAxes control scheme constants
 var CONTROL_AREA_WIDTH = 400.0;
 var CONTROL_AREA_HEIGHT = 300.0;
@@ -28,92 +28,6 @@ var ControlScheme;
     ControlScheme[ControlScheme["MouseFollow"] = 1] = "MouseFollow";
     ControlScheme[ControlScheme["GamepadFollow"] = 2] = "GamepadFollow";
 })(ControlScheme || (ControlScheme = {}));
-var Corner = /** @class */ (function () {
-    function Corner(vertex, smoothness) {
-        this.vertex = vertex;
-        this.smoothness = smoothness;
-    }
-    return Corner;
-}());
-var CubicBezier = /** @class */ (function () {
-    function CubicBezier(start, end, cp1, cp2) {
-        this.start = start;
-        this.end = end;
-        this.cp1 = cp1;
-        this.cp2 = cp2;
-    }
-    return CubicBezier;
-}());
-var Track = /** @class */ (function () {
-    function Track(name, radius, corners) {
-        this.name = name;
-        this.radius = radius;
-        // Build a list of unit offset vectors from each vertex to its control
-        // point in the forward direction.
-        var forwardCPOffsets = [];
-        for (var i = 0; i < corners.length; ++i) {
-            var v = corners[i].vertex;
-            var vPrev = corners[(i - 1 + corners.length) % corners.length].vertex;
-            var vNext = corners[(i + 1) % corners.length].vertex;
-            var fromPrev = v.minus(vPrev);
-            var toNext = vNext.minus(v);
-            // Get a vector bisecting the angle of the corner.
-            var bisector = fromPrev.times(toNext.length()).plus(toNext.times(-fromPrev.length()));
-            // Use the z-coordinate of the cross product to determine if it's a
-            // left or right turn and therefore which way to rotate the offset.
-            var crossZ = fromPrev.x * toNext.y - fromPrev.y * toNext.x;
-            var rotated = crossZ > 0 ? bisector.rotatedQuarter() : bisector.rotatedThreeQuarters();
-            forwardCPOffsets.push(rotated.normalized());
-        }
-        this.spline = [];
-        for (var i = 0; i < corners.length; ++i) {
-            var next = (i + 1) % corners.length;
-            var start = corners[i].vertex;
-            var end = corners[next].vertex;
-            var l = end.minus(start).length() / 3;
-            var cp1 = start.plus(forwardCPOffsets[i].times(corners[i].smoothness * l));
-            var cp2 = end.minus(forwardCPOffsets[next].times(corners[next].smoothness * l));
-            this.spline.push(new CubicBezier(start, end, cp1, cp2));
-        }
-    }
-    Track.prototype.draw = function (debug) {
-        this.drawSplines(this.radius, "black");
-        this.drawSplines(this.radius - TRACK_BORDER, "rgb(60, 60, 60)");
-        if (debug) {
-            ctx.font = "20pt serif";
-            ctx.fillStyle = "white";
-            ctx.fillText(this.name, 10, 30);
-            // Draw Bezier curve "frames".
-            ctx.lineWidth = 1;
-            var even = true;
-            for (var _i = 0, _a = this.spline; _i < _a.length; _i++) {
-                var curve = _a[_i];
-                ctx.strokeStyle = even ? "red" : "white";
-                even = !even;
-                ctx.beginPath();
-                ctx.moveTo(curve.start.x, curve.start.y);
-                ctx.lineTo(curve.cp1.x, curve.cp1.y);
-                ctx.lineTo(curve.cp2.x, curve.cp2.y);
-                ctx.lineTo(curve.end.x, curve.end.y);
-                ctx.stroke();
-            }
-        }
-    };
-    Track.prototype.drawSplines = function (radius, style) {
-        ctx.beginPath();
-        ctx.strokeStyle = style;
-        var start = this.spline[0].start;
-        ctx.moveTo(start.x, start.y);
-        for (var _i = 0, _a = this.spline; _i < _a.length; _i++) {
-            var curve = _a[_i];
-            ctx.bezierCurveTo(curve.cp1.x, curve.cp1.y, curve.cp2.x, curve.cp2.y, curve.end.x, curve.end.y);
-            ctx.lineWidth = 2 * radius;
-        }
-        ctx.closePath();
-        ctx.stroke();
-    };
-    return Track;
-}());
 var tracks = [
     new Track("Serpentine", TRACK_RADIUS, [
         new Corner(new Vec2(100, 100), 0.5),
@@ -308,7 +222,7 @@ var MainScene = /** @class */ (function () {
         ctx.beginPath();
         ctx.rect(0, 0, canvas.width, canvas.height);
         ctx.fill();
-        tracks[this.trackIdx].draw(this.debug);
+        tracks[this.trackIdx].draw(ctx, this.debug);
         // Draw walls.
         for (var _i = 0, _a = this.walls; _i < _a.length; _i++) {
             var wall = _a[_i];

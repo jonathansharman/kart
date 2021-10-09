@@ -157,3 +157,17 @@ export class Angle {
 		return new Angle(a < b ? a : -b);
 	}
 }
+
+export class CubicBezier {
+	start: Vec2;
+	end: Vec2;
+	cp1: Vec2;
+	cp2: Vec2;
+
+	constructor(start: Vec2, end: Vec2, cp1: Vec2, cp2: Vec2) {
+		this.start = start;
+		this.end = end;
+		this.cp1 = cp1;
+		this.cp2 = cp2;
+	}
+}
