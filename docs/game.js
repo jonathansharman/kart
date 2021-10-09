@@ -1,6 +1,6 @@
 import { Bumper } from "./bumper.js";
 import { Kart } from "./kart.js";
-import { Angle, clamp, mod, Vec2 } from "./math.js";
+import { Angle, clamp, mod, TAU, Vec2 } from "./math.js";
 import { Corner, Track } from "./track.js";
 var UPDATES_PER_SEC = 60.0;
 var MS_PER_UPDATE = 1000.0 / UPDATES_PER_SEC;
@@ -85,19 +85,18 @@ var tracks = [
 var MainScene = /** @class */ (function () {
     function MainScene() {
         this.debug = false;
+        this.trackIdx = 0;
         this.controlScheme = ControlScheme.GamepadFollow;
-        this.mousePos = new Vec2(0.0, 0.0);
+        this.mousePosClient = new Vec2(0.0, 0.0);
+        this.mousePosWorld = new Vec2(0.0, 0.0);
         this.brake = false;
         this.gas = false;
-        this.cameraPos = new Vec2(0.0, 0.0);
+        this.camera = new Vec2(0.0, 0.0);
         this.kart = new Kart();
-        this.trackIdx = 0;
-        this.addWalls();
+        this.walls = [
+            new Bumper(15.0, new Vec2(300.0, 300.0)),
+        ];
     }
-    MainScene.prototype.addWalls = function () {
-        this.walls = [];
-        this.walls.push(new Bumper(15.0, new Vec2(300.0, 300.0)));
-    };
     MainScene.prototype.update = function () {
         // Fall back to mouse controls if the gamepad is disconnected.
         var controlScheme = this.controlScheme;
@@ -114,29 +113,29 @@ var MainScene = /** @class */ (function () {
                     var deadAreaLeft = 0.5 * (canvas.width - DEAD_AREA_WIDTH);
                     var deadAreaRight = deadAreaLeft + DEAD_AREA_WIDTH;
                     // Left steering: 0 (right) to 1 (left)
-                    var leftSteering = clamp((deadAreaLeft - this.mousePos.x) / STEERING_WIDTH, 0.0, 1.0);
+                    var leftSteering = clamp((deadAreaLeft - this.mousePosClient.x) / STEERING_WIDTH, 0.0, 1.0);
                     // Right steering: 0 (left) to 1 (right)
-                    var rightSteering = clamp((this.mousePos.x - deadAreaRight) / STEERING_WIDTH, 0.0, 1.0);
+                    var rightSteering = clamp((this.mousePosClient.x - deadAreaRight) / STEERING_WIDTH, 0.0, 1.0);
                     // Throttle: 0 (bottom) to 1 (top)
-                    throttle = clamp((controlAreaBottom - this.mousePos.y) / CONTROL_AREA_HEIGHT, 0.0, 1.0);
+                    throttle = clamp((controlAreaBottom - this.mousePosClient.y) / CONTROL_AREA_HEIGHT, 0.0, 1.0);
                     // Steering
                     this.kart.steering = MAX_STEERING_ANGLE * (rightSteering - leftSteering);
                 }
                 break;
             case ControlScheme.MouseFollow:
                 {
-                    var offset = this.mousePos.minus(this.kart.pos);
-                    var angle = Angle.fromVec2(offset);
-                    var distance = offset.length();
+                    var offset_1 = this.mousePosWorld.minus(this.kart.pos);
+                    var angle = Angle.fromVec2(offset_1);
+                    var distance = offset_1.length();
                     throttle = Math.min(MAX_SPEED_DISTANCE, distance) / MAX_SPEED_DISTANCE;
                     this.kart.steering = clamp(this.kart.heading.smallestAngleTo(angle).getNegativePiToPi(), -MAX_STEERING_ANGLE, MAX_STEERING_ANGLE);
                 }
                 break;
             case ControlScheme.GamepadFollow:
                 {
-                    var offset = new Vec2(gamepad.axes[0], gamepad.axes[1]);
-                    var angle = Angle.fromVec2(offset);
-                    var length_1 = offset.length();
+                    var offset_2 = new Vec2(gamepad.axes[0], gamepad.axes[1]);
+                    var angle = Angle.fromVec2(offset_2);
+                    var length_1 = offset_2.length();
                     if (length_1 > STICK_DEAD_RADIUS) {
                         throttle = Math.min(1.0, (length_1 - STICK_DEAD_RADIUS) / (1.0 - STICK_DEAD_RADIUS));
                         this.kart.steering = clamp(this.kart.heading.smallestAngleTo(angle).getNegativePiToPi(), -MAX_STEERING_ANGLE, MAX_STEERING_ANGLE);
@@ -161,31 +160,17 @@ var MainScene = /** @class */ (function () {
         this.kart.speed -= drag * this.kart.speed;
         // Change in heading
         this.kart.heading = this.kart.heading.plus(this.kart.steering * this.kart.speed / 50.0);
-        var vx = this.kart.speed * this.kart.heading.cos();
-        var vy = this.kart.speed * this.kart.heading.sin();
-        this.kart.pos.x += vx;
-        this.kart.pos.y += vy;
-        while (this.kart.pos.x < 0.0) {
-            this.kart.pos.x += canvas.width;
-        }
-        while (this.kart.pos.x > canvas.width) {
-            this.kart.pos.x -= canvas.width;
-        }
-        while (this.kart.pos.y < 0.0) {
-            this.kart.pos.y += canvas.height;
-        }
-        while (this.kart.pos.y > canvas.height) {
-            this.kart.pos.y -= canvas.height;
-        }
-        this.kart.frontBumper.pos.x = this.kart.pos.x + 20.0 * this.kart.heading.cos();
-        this.kart.frontBumper.pos.y = this.kart.pos.y + 20.0 * this.kart.heading.sin();
-        this.kart.backBumper.pos.x = this.kart.pos.x - 20.0 * this.kart.heading.cos();
-        this.kart.backBumper.pos.y = this.kart.pos.y - 20.0 * this.kart.heading.sin();
+        var v = Vec2.fromPolar(this.kart.speed, this.kart.heading);
+        this.kart.pos = this.kart.pos.plus(v);
+        var offset = Vec2.fromPolar(20.0, this.kart.heading);
+        this.kart.frontBumper.pos = this.kart.pos.plus(offset);
+        this.kart.backBumper.pos = this.kart.pos.minus(offset);
         this.wallBumperCollision(this.kart.frontBumper);
         this.wallBumperCollision(this.kart.backBumper);
-        // The camera leads the kart.
-        //this.cameraPos = new Vec2(this.kart.pos.x + 20.0 * vx, this.kart.pos.y + 20.0 * vy);
-        //this.cameraPos = this.kart.pos;
+        this.camera = this.kart.pos;
+        this.mousePosWorld = mainScene.mousePosClient
+            .plus(mainScene.camera)
+            .minus(new Vec2(0.5 * canvas.width, 0.5 * canvas.height));
     };
     MainScene.prototype.offRoad = function () {
         // TODO: Collision detection with track's bezier curves
@@ -218,17 +203,40 @@ var MainScene = /** @class */ (function () {
     };
     MainScene.prototype.draw = function (_timestamp) {
         var _this = this;
+        // Clear the drawing.
         ctx.fillStyle = "rgb(30, 100, 40)";
         ctx.beginPath();
         ctx.rect(0, 0, canvas.width, canvas.height);
         ctx.fill();
-        tracks[this.trackIdx].draw(ctx, this.debug);
+        // Save the current ctx state and then apply the camera transform and draw the world.
+        ctx.save();
+        ctx.translate(0.5 * canvas.width - this.camera.x, 0.5 * canvas.height - this.camera.y);
+        this.drawWorld();
+        // Restore the ctx state to undo the camera transform and draw the UI.
+        ctx.restore();
+        this.drawUI();
+        window.requestAnimationFrame(function (timestamp) {
+            _this.draw(timestamp);
+        });
+    };
+    MainScene.prototype.drawWorld = function () {
+        tracks[this.trackIdx].drawWorld(ctx, this.debug);
         // Draw walls.
         for (var _i = 0, _a = this.walls; _i < _a.length; _i++) {
             var wall = _a[_i];
             wall.draw(ctx);
         }
-        this.kart.draw(ctx, this.cameraPos, this.debug);
+        this.kart.draw(ctx, this.debug);
+        // Draw the mouse's position in the world.
+        if (this.debug) {
+            ctx.beginPath();
+            ctx.fillStyle = "red";
+            ctx.ellipse(this.mousePosWorld.x, this.mousePosWorld.y, 5, 5, 0, 0, TAU);
+            ctx.fill();
+        }
+    };
+    MainScene.prototype.drawUI = function () {
+        tracks[this.trackIdx].drawUI(ctx, this.debug);
         // Draw control area when in MouseAxes control mode.
         if (this.controlScheme == ControlScheme.MouseAxes) {
             ctx.strokeStyle = "black";
@@ -243,17 +251,14 @@ var MainScene = /** @class */ (function () {
             ctx.rect(0.5 * (canvas.width - DEAD_AREA_WIDTH), 0.5 * (canvas.height - CONTROL_AREA_HEIGHT), DEAD_AREA_WIDTH, CONTROL_AREA_HEIGHT);
             ctx.stroke();
         }
-        window.requestAnimationFrame(function (timestamp) {
-            _this.draw(timestamp);
-        });
     };
     return MainScene;
 }());
 var mainScene = new MainScene();
 window.onmousemove = function (event) {
     var rect = canvas.getBoundingClientRect();
-    mainScene.mousePos.x = event.clientX - rect.left;
-    mainScene.mousePos.y = event.clientY - rect.top;
+    mainScene.mousePosClient.x = event.clientX - rect.left;
+    mainScene.mousePosClient.y = event.clientY - rect.top;
 };
 window.onmousedown = function (event) {
     switch (event.button) {

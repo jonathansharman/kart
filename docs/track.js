@@ -40,13 +40,10 @@ var Track = /** @class */ (function () {
             this.spline.push(new CubicBezier(start, end, cp1, cp2));
         }
     }
-    Track.prototype.draw = function (ctx, debug) {
+    Track.prototype.drawWorld = function (ctx, debug) {
         this.drawSplines(ctx, this.radius, "black");
         this.drawSplines(ctx, this.radius - TRACK_BORDER, "rgb(60, 60, 60)");
         if (debug) {
-            ctx.font = "20pt serif";
-            ctx.fillStyle = "white";
-            ctx.fillText(this.name, 10, 30);
             // Draw Bezier curve "frames".
             ctx.lineWidth = 1;
             var even = true;
@@ -61,6 +58,13 @@ var Track = /** @class */ (function () {
                 ctx.lineTo(curve.end.x, curve.end.y);
                 ctx.stroke();
             }
+        }
+    };
+    Track.prototype.drawUI = function (ctx, debug) {
+        if (debug) {
+            ctx.font = "20pt serif";
+            ctx.fillStyle = "white";
+            ctx.fillText(this.name, 10, 30);
         }
     };
     Track.prototype.drawSplines = function (ctx, radius, style) {

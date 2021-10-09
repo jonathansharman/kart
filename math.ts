@@ -21,6 +21,10 @@ export class Vec2 {
 		this.y = y;
 	}
 
+	static fromPolar(length: number, angle: Angle): Vec2 {
+		return new Vec2(angle.cos(), angle.sin()).times(length);
+	}
+
 	length2(): number {
 		return this.x * this.x + this.y * this.y;
 	}

@@ -51,14 +51,11 @@ export class Track {
 		}
 	}
 
-	draw(ctx: CanvasRenderingContext2D, debug: boolean) {
+	drawWorld(ctx: CanvasRenderingContext2D, debug: boolean) {
 		this.drawSplines(ctx, this.radius, "black");
 		this.drawSplines(ctx, this.radius - TRACK_BORDER, "rgb(60, 60, 60)");
 
 		if (debug) {
-			ctx.font = "20pt serif";
-			ctx.fillStyle = "white";
-			ctx.fillText(this.name, 10, 30);
 			// Draw Bezier curve "frames".
 			ctx.lineWidth = 1;
 			let even = true;
@@ -75,6 +72,14 @@ export class Track {
 		}
 	}
 
+	drawUI(ctx: CanvasRenderingContext2D, debug: boolean) {
+		if (debug) {
+			ctx.font = "20pt serif";
+			ctx.fillStyle = "white";
+			ctx.fillText(this.name, 10, 30);
+		}
+	}
+
 	private drawSplines(ctx: CanvasRenderingContext2D, radius: number, style: string) {
 		ctx.beginPath();
 		ctx.lineJoin = "round";
@@ -83,7 +88,14 @@ export class Track {
 		const start = this.spline[0].start;
 		ctx.moveTo(start.x, start.y);
 		for (let curve of this.spline) {
-			ctx.bezierCurveTo(curve.cp1.x, curve.cp1.y, curve.cp2.x, curve.cp2.y, curve.end.x, curve.end.y);
+			ctx.bezierCurveTo(
+				curve.cp1.x,
+				curve.cp1.y,
+				curve.cp2.x,
+				curve.cp2.y,
+				curve.end.x,
+				curve.end.y,
+			);
 		}
 		ctx.closePath();
 		ctx.stroke();

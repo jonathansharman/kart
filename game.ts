@@ -1,6 +1,6 @@
 import { Bumper } from "./bumper.js";
 import { Kart } from "./kart.js";
-import { Angle, clamp, mod, Vec2 } from "./math.js";
+import { Angle, clamp, mod, TAU, Vec2 } from "./math.js";
 import { Corner, Track } from "./track.js"
 
 const UPDATES_PER_SEC = 60.0;
@@ -98,43 +98,23 @@ const tracks: Track[] = [
 ];
 
 class MainScene {
-	debug: boolean;
+	debug: boolean = false;
 
-	trackIdx: number;
+	trackIdx: number = 0;
 
-	controlScheme: ControlScheme;
-	mousePos: Vec2;
-	brake: boolean;
-	gas: boolean;
+	controlScheme: ControlScheme = ControlScheme.GamepadFollow;
+	mousePosClient: Vec2 = new Vec2(0.0, 0.0);
+	mousePosWorld: Vec2 = new Vec2(0.0, 0.0);
+	brake: boolean = false;
+	gas: boolean = false;
 
-	private cameraPos: Vec2;
+	camera: Vec2 = new Vec2(0.0, 0.0);
 
-	private kart: Kart;
+	private kart: Kart = new Kart();
 
-	private walls: Bumper[];
-	private wallBuckets: Bumper[][];
-
-	constructor() {
-		this.debug = false;
-
-		this.controlScheme = ControlScheme.GamepadFollow;
-		this.mousePos = new Vec2(0.0, 0.0);
-		this.brake = false;
-		this.gas = false;
-
-		this.cameraPos = new Vec2(0.0, 0.0);
-
-		this.kart = new Kart();
-
-		this.trackIdx = 0;
-
-		this.addWalls();
-	}
-
-	addWalls() {
-		this.walls = [];
-		this.walls.push(new Bumper(15.0, new Vec2(300.0, 300.0)));
-	}
+	private walls: Bumper[] = [
+		new Bumper(15.0, new Vec2(300.0, 300.0)),
+	];
 
 	update() {
 		// Fall back to mouse controls if the gamepad is disconnected.
@@ -153,18 +133,18 @@ class MainScene {
 					const deadAreaLeft = 0.5 * (canvas.width - DEAD_AREA_WIDTH);
 					const deadAreaRight = deadAreaLeft + DEAD_AREA_WIDTH;
 					// Left steering: 0 (right) to 1 (left)
-					const leftSteering = clamp((deadAreaLeft - this.mousePos.x) / STEERING_WIDTH, 0.0, 1.0);
+					const leftSteering = clamp((deadAreaLeft - this.mousePosClient.x) / STEERING_WIDTH, 0.0, 1.0);
 					// Right steering: 0 (left) to 1 (right)
-					const rightSteering = clamp((this.mousePos.x - deadAreaRight) / STEERING_WIDTH, 0.0, 1.0);
+					const rightSteering = clamp((this.mousePosClient.x - deadAreaRight) / STEERING_WIDTH, 0.0, 1.0);
 					// Throttle: 0 (bottom) to 1 (top)
-					throttle = clamp((controlAreaBottom - this.mousePos.y) / CONTROL_AREA_HEIGHT, 0.0, 1.0);
+					throttle = clamp((controlAreaBottom - this.mousePosClient.y) / CONTROL_AREA_HEIGHT, 0.0, 1.0);
 					// Steering
 					this.kart.steering = MAX_STEERING_ANGLE * (rightSteering - leftSteering);
 				}
 				break;
 			case ControlScheme.MouseFollow:
 				{
-					const offset = this.mousePos.minus(this.kart.pos);
+					const offset = this.mousePosWorld.minus(this.kart.pos);
 					const angle = Angle.fromVec2(offset);
 					const distance = offset.length();
 					throttle = Math.min(MAX_SPEED_DISTANCE, distance) / MAX_SPEED_DISTANCE;
@@ -209,37 +189,21 @@ class MainScene {
 		// Change in heading
 		this.kart.heading = this.kart.heading.plus(this.kart.steering * this.kart.speed / 50.0);
 
-		const vx = this.kart.speed * this.kart.heading.cos();
-		const vy = this.kart.speed * this.kart.heading.sin();
+		let v = Vec2.fromPolar(this.kart.speed, this.kart.heading);
+		this.kart.pos = this.kart.pos.plus(v);
 
-		this.kart.pos.x += vx;
-		this.kart.pos.y += vy;
-
-		while (this.kart.pos.x < 0.0) {
-			this.kart.pos.x += canvas.width;
-		}
-		while (this.kart.pos.x > canvas.width) {
-			this.kart.pos.x -= canvas.width;
-		}
-		while (this.kart.pos.y < 0.0) {
-			this.kart.pos.y += canvas.height;
-		}
-		while (this.kart.pos.y > canvas.height) {
-			this.kart.pos.y -= canvas.height;
-		}
-
-		this.kart.frontBumper.pos.x = this.kart.pos.x + 20.0 * this.kart.heading.cos();
-		this.kart.frontBumper.pos.y = this.kart.pos.y + 20.0 * this.kart.heading.sin();
-
-		this.kart.backBumper.pos.x = this.kart.pos.x - 20.0 * this.kart.heading.cos();
-		this.kart.backBumper.pos.y = this.kart.pos.y - 20.0 * this.kart.heading.sin();
+		const offset = Vec2.fromPolar(20.0, this.kart.heading);
+		this.kart.frontBumper.pos = this.kart.pos.plus(offset);
+		this.kart.backBumper.pos = this.kart.pos.minus(offset);
 
 		this.wallBumperCollision(this.kart.frontBumper);
 		this.wallBumperCollision(this.kart.backBumper);
 
-		// The camera leads the kart.
-		//this.cameraPos = new Vec2(this.kart.pos.x + 20.0 * vx, this.kart.pos.y + 20.0 * vy);
-		//this.cameraPos = this.kart.pos;
+		this.camera = this.kart.pos;
+
+		this.mousePosWorld = mainScene.mousePosClient
+			.plus(mainScene.camera)
+			.minus(new Vec2(0.5 * canvas.width, 0.5 * canvas.height));
 	}
 
 	offRoad(): boolean {
@@ -274,19 +238,47 @@ class MainScene {
 	}
 
 	draw(_timestamp: DOMHighResTimeStamp) {
+		// Clear the drawing.
 		ctx.fillStyle = "rgb(30, 100, 40)";
 		ctx.beginPath();
 		ctx.rect(0, 0, canvas.width, canvas.height);
 		ctx.fill();
 
-		tracks[this.trackIdx].draw(ctx, this.debug);
+		// Save the current ctx state and then apply the camera transform and draw the world.
+		ctx.save();
+		ctx.translate(0.5 * canvas.width - this.camera.x, 0.5 * canvas.height - this.camera.y);
+		this.drawWorld();
+
+		// Restore the ctx state to undo the camera transform and draw the UI.
+		ctx.restore();
+		this.drawUI();
+
+		window.requestAnimationFrame((timestamp: DOMHighResTimeStamp) => {
+			this.draw(timestamp);
+		});
+	}
+
+	drawWorld() {
+		tracks[this.trackIdx].drawWorld(ctx, this.debug);
 
 		// Draw walls.
 		for (const wall of this.walls) {
 			wall.draw(ctx);
 		}
 
-		this.kart.draw(ctx, this.cameraPos, this.debug);
+		this.kart.draw(ctx, this.debug);
+
+		// Draw the mouse's position in the world.
+		if (this.debug) {
+			ctx.beginPath();
+			ctx.fillStyle = "red";
+			ctx.ellipse(this.mousePosWorld.x, this.mousePosWorld.y, 5, 5, 0, 0, TAU);
+			ctx.fill();
+		}
+	}
+
+	private drawUI() {
+		tracks[this.trackIdx].drawUI(ctx, this.debug);
 
 		// Draw control area when in MouseAxes control mode.
 		if (this.controlScheme == ControlScheme.MouseAxes) {
@@ -312,10 +304,6 @@ class MainScene {
 			);
 			ctx.stroke();
 		}
-
-		window.requestAnimationFrame((timestamp: DOMHighResTimeStamp) => {
-			this.draw(timestamp);
-		});
 	}
 }
 
@@ -323,8 +311,8 @@ const mainScene = new MainScene();
 
 window.onmousemove = (event: MouseEvent) => {
 	const rect = canvas.getBoundingClientRect();
-	mainScene.mousePos.x = event.clientX - rect.left;
-	mainScene.mousePos.y = event.clientY - rect.top;
+	mainScene.mousePosClient.x = event.clientX - rect.left;
+	mainScene.mousePosClient.y = event.clientY - rect.top;
 };
 
 window.onmousedown = (event: MouseEvent) => {
