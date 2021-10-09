@@ -9,9 +9,9 @@ var Kart = /** @class */ (function () {
         this.frontBumper = new Bumper(15.0);
         this.backBumper = new Bumper(10.0);
     }
-    Kart.prototype.draw = function (ctx, cameraPos, debug) {
-        var x = this.pos.x - cameraPos.x;
-        var y = this.pos.y - cameraPos.y;
+    Kart.prototype.draw = function (ctx, debug) {
+        var x = this.pos.x;
+        var y = this.pos.y;
         var frontOffset = 25.0;
         var backOffset = 20.0;
         var frontAngleOffset = Math.PI / 10.0;

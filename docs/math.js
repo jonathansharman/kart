@@ -13,6 +13,9 @@ var Vec2 = /** @class */ (function () {
         this.x = x;
         this.y = y;
     }
+    Vec2.fromPolar = function (length, angle) {
+        return new Vec2(angle.cos(), angle.sin()).times(length);
+    };
     Vec2.prototype.length2 = function () {
         return this.x * this.x + this.y * this.y;
     };

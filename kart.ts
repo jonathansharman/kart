@@ -20,9 +20,9 @@ export class Kart {
 		this.backBumper = new Bumper(10.0);
 	}
 
-	draw(ctx: CanvasRenderingContext2D, cameraPos: Vec2, debug: boolean) {
-		const x = this.pos.x - cameraPos.x;
-		const y = this.pos.y - cameraPos.y;
+	draw(ctx: CanvasRenderingContext2D, debug: boolean) {
+		const x = this.pos.x;
+		const y = this.pos.y;
 
 		const frontOffset = 25.0;
 		const backOffset = 20.0;
