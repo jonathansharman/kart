@@ -1,14 +1,60 @@
 import { Bumper } from "./bumper.js";
 import { Angle, Vec2 } from "./math.js";
+var ACCELERATION = 0.05;
+var ON_TRACK_DRAG = 0.01;
+var OFF_TRACK_DRAG = 0.03;
+var WALL_RESTITUTION = 0.7;
 var Kart = /** @class */ (function () {
     function Kart() {
+        this.gas = 0.0;
+        this.brake = 0.0;
+        this.steering = 0.0;
         this.pos = new Vec2(0.0, 0.0);
         this.speed = 0.0;
         this.heading = new Angle(0.0);
-        this.steering = 0.0;
         this.frontBumper = new Bumper(15.0);
         this.backBumper = new Bumper(10.0);
     }
+    Kart.prototype.getPos = function () {
+        return this.pos;
+    };
+    Kart.prototype.getSpeed = function () {
+        return this.speed;
+    };
+    Kart.prototype.getHeading = function () {
+        return this.heading;
+    };
+    Kart.prototype.update = function (track, walls) {
+        // Apply gas and brake.
+        this.speed -= ACCELERATION * this.brake;
+        this.speed += ACCELERATION * this.gas;
+        // Apply drag.
+        var drag = track.containsPoint(this.pos) ? ON_TRACK_DRAG : OFF_TRACK_DRAG;
+        this.speed *= 1.0 - drag;
+        // Update heading and position.
+        this.heading = this.heading.plus(this.steering * this.speed / 50.0);
+        this.pos = this.pos.plus(Vec2.fromPolar(this.speed, this.heading));
+        var offset = Vec2.fromPolar(20.0, this.heading);
+        this.frontBumper.pos = this.pos.plus(offset);
+        this.backBumper.pos = this.pos.minus(offset);
+        this.bumperCollision(walls, this.frontBumper);
+        this.bumperCollision(walls, this.backBumper);
+    };
+    Kart.prototype.bumperCollision = function (walls, bumper) {
+        for (var _i = 0, walls_1 = walls; _i < walls_1.length; _i++) {
+            var wall = walls_1[_i];
+            var r = bumper.radius + wall.radius;
+            var offset = new Vec2(bumper.pos.x - wall.pos.x, bumper.pos.y - wall.pos.y);
+            var d2 = offset.length2();
+            if (d2 != 0.0 && d2 < r * r) {
+                // Lose speed.
+                this.speed *= -WALL_RESTITUTION;
+                // Fix overlap.
+                var d = Math.sqrt(d2);
+                this.pos = this.pos.plus(offset.times((r - d) / d));
+            }
+        }
+    };
     Kart.prototype.draw = function (ctx, debug) {
         var x = this.pos.x;
         var y = this.pos.y;

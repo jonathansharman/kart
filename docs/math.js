@@ -3,6 +3,10 @@ export var TAU = 2 * Math.PI;
 export var clamp = function (n, min, max) {
     return Math.max(min, Math.min(max, n));
 };
+// Maps n in domain [min, max] linearly to range [min, max].
+export var mapToRange = function (n, domain, range) {
+    return range[0] + (n - domain[0]) / (domain[1] - domain[0]) * range[1];
+};
 // Mathematical modulus. 0 <= (x mod m) < m for m > 0.
 export var mod = function (x, m) {
     return (x % m + m) % m;
