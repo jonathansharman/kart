@@ -16,7 +16,7 @@ var Game = /** @class */ (function () {
         this.walls = [
             new Bumper(15.0, new Vec2(300.0, 300.0)),
         ];
-        this.controller = new Controller(Device.Gamepad, ControlMode.Axes);
+        this.controller = new Controller(Device.Gamepad, ControlMode.Follow);
         this.camera = new Vec2(0.0, 0.0);
     }
     Game.prototype.update = function () {
@@ -50,7 +50,7 @@ var Game = /** @class */ (function () {
     };
     Game.prototype.drawUI = function () {
         this.track.drawUI(ctx, this.debug);
-        this.controller.drawUI(ctx);
+        this.controller.drawUI(ctx, this.debug);
         if (this.debug) {
             ctx.font = "20pt serif";
             var x = 10;

@@ -8,7 +8,9 @@ const OFF_TRACK_DRAG = 0.03;
 const WALL_RESTITUTION = 0.7;
 
 export class Kart {
+	// Gas pedal, from 0 to 1.
 	gas: number = 0.0;
+	// Brake pedal, from 0 to 1.
 	brake: number = 0.0;
 	steering: number = 0.0;
 

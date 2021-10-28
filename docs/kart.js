@@ -6,7 +6,9 @@ var OFF_TRACK_DRAG = 0.03;
 var WALL_RESTITUTION = 0.7;
 var Kart = /** @class */ (function () {
     function Kart() {
+        // Gas pedal, from 0 to 1.
         this.gas = 0.0;
+        // Brake pedal, from 0 to 1.
         this.brake = 0.0;
         this.steering = 0.0;
         this.pos = new Vec2(0.0, 0.0);

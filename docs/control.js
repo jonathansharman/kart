@@ -1,14 +1,15 @@
-import { Angle, clamp, mapToRange, Vec2 } from "./math.js";
+import { Angle, clamp, mapToRange, TAU, Vec2 } from "./math.js";
 var canvas = document.getElementById("canvas");
 var MAX_STEERING_ANGLE = Math.PI / 6.0; // TODO: This should go in Kart.
-// MouseAxes control scheme constants
+// Mouse + axes control scheme constants
 var CONTROL_AREA_WIDTH = 400.0;
 var CONTROL_AREA_HEIGHT = 300.0;
 var DEAD_AREA_WIDTH = 75.0;
 var STEERING_WIDTH = 0.5 * (CONTROL_AREA_WIDTH - DEAD_AREA_WIDTH);
-// MouseFollow control scheme constants
-var MAX_SPEED_DISTANCE = 300.0;
-// Gamepad control constants
+// Mouse + follow control scheme constants
+var MIN_SPEED_DISTANCE = 60.0;
+var MAX_SPEED_DISTANCE = 225.0;
+// Gamepad constants
 var STICK_DEAD_RADIUS = 0.25;
 var STICK_STEERING_DRAG = 0.95;
 export var Device;
@@ -70,13 +71,15 @@ var Controller = /** @class */ (function () {
         });
     }
     Controller.prototype.update = function (kart, camera) {
-        // Fall back to mouse controls if the gamepad is disconnected.
-        var device = this.device;
+        // For now, determine device only by whether the gamepad is disconnected.
         var gamepad = navigator.getGamepads()[0];
-        if (!gamepad && device == Device.Gamepad) {
-            device = Device.Mouse;
+        if (gamepad) {
+            this.device = Device.Gamepad;
         }
-        switch (device) {
+        else {
+            this.device = Device.Mouse;
+        }
+        switch (this.device) {
             case Device.Mouse:
                 switch (this.mode) {
                     case ControlMode.Axes:
@@ -103,7 +106,7 @@ var Controller = /** @class */ (function () {
                             var offset = mousePosWorld.minus(kart.getPos());
                             var angle = Angle.fromVec2(offset);
                             var distance = offset.length();
-                            kart.gas = Math.min(MAX_SPEED_DISTANCE, distance) / MAX_SPEED_DISTANCE;
+                            kart.gas = mapToRange(clamp(distance, MIN_SPEED_DISTANCE, MAX_SPEED_DISTANCE), [MIN_SPEED_DISTANCE, MAX_SPEED_DISTANCE], [0.0, 1.0]);
                             kart.steering = clamp(kart.getHeading().smallestAngleTo(angle).getNegativePiToPi(), -MAX_STEERING_ANGLE, MAX_STEERING_ANGLE);
                         }
                         break;
@@ -145,20 +148,36 @@ var Controller = /** @class */ (function () {
                 break;
         }
     };
-    Controller.prototype.drawUI = function (ctx) {
+    Controller.prototype.drawUI = function (ctx, debug) {
         // Draw control area when in MouseAxes control mode.
-        if (this.device == Device.Mouse && this.mode == ControlMode.Axes) {
-            ctx.strokeStyle = "black";
-            ctx.lineWidth = 1.0;
-            ctx.beginPath();
-            ctx.rect(0.5 * (canvas.width - CONTROL_AREA_WIDTH), 0.5 * (canvas.height - CONTROL_AREA_HEIGHT), CONTROL_AREA_WIDTH, CONTROL_AREA_HEIGHT);
-            ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
-            ctx.fill();
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.fillStyle = "black";
-            ctx.rect(0.5 * (canvas.width - DEAD_AREA_WIDTH), 0.5 * (canvas.height - CONTROL_AREA_HEIGHT), DEAD_AREA_WIDTH, CONTROL_AREA_HEIGHT);
-            ctx.stroke();
+        if (this.device == Device.Mouse) {
+            switch (this.mode) {
+                case ControlMode.Follow:
+                    if (debug) {
+                        ctx.strokeStyle = "white";
+                        ctx.lineWidth = 1.0;
+                        ctx.beginPath();
+                        ctx.ellipse(0.5 * canvas.width, 0.5 * canvas.height, MIN_SPEED_DISTANCE, MIN_SPEED_DISTANCE, 0, 0, TAU);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.ellipse(0.5 * canvas.width, 0.5 * canvas.height, MAX_SPEED_DISTANCE, MAX_SPEED_DISTANCE, 0, 0, TAU);
+                        ctx.stroke();
+                    }
+                    break;
+                case ControlMode.Axes:
+                    ctx.strokeStyle = "black";
+                    ctx.lineWidth = 2.0;
+                    ctx.beginPath();
+                    ctx.rect(0.5 * (canvas.width - CONTROL_AREA_WIDTH), 0.5 * (canvas.height - CONTROL_AREA_HEIGHT), CONTROL_AREA_WIDTH, CONTROL_AREA_HEIGHT);
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.fillStyle = "black";
+                    ctx.rect(0.5 * (canvas.width - DEAD_AREA_WIDTH), 0.5 * (canvas.height - CONTROL_AREA_HEIGHT), DEAD_AREA_WIDTH, CONTROL_AREA_HEIGHT);
+                    ctx.stroke();
+                    break;
+            }
         }
     };
     return Controller;

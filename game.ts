@@ -22,7 +22,7 @@ class Game {
 		new Bumper(15.0, new Vec2(300.0, 300.0)),
 	];
 
-	controller: Controller = new Controller(Device.Gamepad, ControlMode.Axes);
+	controller: Controller = new Controller(Device.Gamepad, ControlMode.Follow);
 
 	camera: Vec2 = new Vec2(0.0, 0.0);
 
@@ -65,7 +65,7 @@ class Game {
 	private drawUI() {
 		this.track.drawUI(ctx, this.debug);
 
-		this.controller.drawUI(ctx);
+		this.controller.drawUI(ctx, this.debug);
 
 		if (this.debug) {
 			ctx.font = "20pt serif";

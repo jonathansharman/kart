@@ -1,11 +1,11 @@
 import { Kart } from "./kart.js";
-import { Angle, clamp, mapToRange, Vec2 } from "./math.js";
+import { Angle, clamp, mapToRange, TAU, Vec2 } from "./math.js";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 
 const MAX_STEERING_ANGLE = Math.PI / 6.0; // TODO: This should go in Kart.
 
-// MouseAxes control scheme constants
+// Mouse + axes control scheme constants
 
 const CONTROL_AREA_WIDTH = 400.0;
 const CONTROL_AREA_HEIGHT = 300.0;
@@ -14,11 +14,12 @@ const DEAD_AREA_WIDTH = 75.0;
 
 const STEERING_WIDTH = 0.5 * (CONTROL_AREA_WIDTH - DEAD_AREA_WIDTH);
 
-// MouseFollow control scheme constants
+// Mouse + follow control scheme constants
 
-const MAX_SPEED_DISTANCE = 300.0;
+const MIN_SPEED_DISTANCE = 60.0;
+const MAX_SPEED_DISTANCE = 225.0;
 
-// Gamepad control constants
+// Gamepad constants
 
 const STICK_DEAD_RADIUS = 0.25;
 const STICK_STEERING_DRAG = 0.95;
@@ -88,14 +89,15 @@ export class Controller {
 	}
 
 	update(kart: Kart, camera: Vec2) {
-		// Fall back to mouse controls if the gamepad is disconnected.
-		let device = this.device;
+		// For now, determine device only by whether the gamepad is disconnected.
 		const gamepad = navigator.getGamepads()[0];
-		if (!gamepad && device == Device.Gamepad) {
-			device = Device.Mouse;
+		if (gamepad) {
+			this.device = Device.Gamepad;
+		} else {
+			this.device = Device.Mouse;
 		}
 
-		switch (device) {
+		switch (this.device) {
 			case Device.Mouse:
 				switch (this.mode) {
 					case ControlMode.Axes:
@@ -122,7 +124,11 @@ export class Controller {
 							const offset = mousePosWorld.minus(kart.getPos());
 							const angle = Angle.fromVec2(offset);
 							const distance = offset.length();
-							kart.gas = Math.min(MAX_SPEED_DISTANCE, distance) / MAX_SPEED_DISTANCE;
+							kart.gas = mapToRange(
+								clamp(distance, MIN_SPEED_DISTANCE, MAX_SPEED_DISTANCE),
+								[MIN_SPEED_DISTANCE, MAX_SPEED_DISTANCE],
+								[0.0, 1.0],
+							);
 							kart.steering = clamp(
 								kart.getHeading().smallestAngleTo(angle).getNegativePiToPi(),
 								-MAX_STEERING_ANGLE,
@@ -174,30 +180,56 @@ export class Controller {
 		}
 	}
 
-	drawUI(ctx: CanvasRenderingContext2D) {
+	drawUI(ctx: CanvasRenderingContext2D, debug: boolean) {
 		// Draw control area when in MouseAxes control mode.
-		if (this.device == Device.Mouse && this.mode == ControlMode.Axes) {
-			ctx.strokeStyle = "black";
-			ctx.lineWidth = 1.0;
-			ctx.beginPath();
-			ctx.rect(
-				0.5 * (canvas.width - CONTROL_AREA_WIDTH),
-				0.5 * (canvas.height - CONTROL_AREA_HEIGHT),
-				CONTROL_AREA_WIDTH,
-				CONTROL_AREA_HEIGHT,
-			);
-			ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
-			ctx.fill();
-			ctx.stroke();
-			ctx.beginPath();
-			ctx.fillStyle = "black";
-			ctx.rect(
-				0.5 * (canvas.width - DEAD_AREA_WIDTH),
-				0.5 * (canvas.height - CONTROL_AREA_HEIGHT),
-				DEAD_AREA_WIDTH,
-				CONTROL_AREA_HEIGHT,
-			);
-			ctx.stroke();
+		if (this.device == Device.Mouse) {
+			switch (this.mode) {
+				case ControlMode.Follow:
+					if (debug) {
+						ctx.strokeStyle = "white";
+						ctx.lineWidth = 1.0;
+						ctx.beginPath();
+						ctx.ellipse(
+							0.5 * canvas.width, 0.5 * canvas.height,
+							MIN_SPEED_DISTANCE, MIN_SPEED_DISTANCE,
+							0,
+							0, TAU,
+						);
+						ctx.stroke();
+						ctx.beginPath();
+						ctx.ellipse(
+							0.5 * canvas.width, 0.5 * canvas.height,
+							MAX_SPEED_DISTANCE, MAX_SPEED_DISTANCE,
+							0,
+							0, TAU,
+						);
+						ctx.stroke();
+					}
+					break;
+				case ControlMode.Axes:
+					ctx.strokeStyle = "black";
+					ctx.lineWidth = 2.0;
+					ctx.beginPath();
+					ctx.rect(
+						0.5 * (canvas.width - CONTROL_AREA_WIDTH),
+						0.5 * (canvas.height - CONTROL_AREA_HEIGHT),
+						CONTROL_AREA_WIDTH,
+						CONTROL_AREA_HEIGHT,
+					);
+					ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+					ctx.fill();
+					ctx.stroke();
+					ctx.beginPath();
+					ctx.fillStyle = "black";
+					ctx.rect(
+						0.5 * (canvas.width - DEAD_AREA_WIDTH),
+						0.5 * (canvas.height - CONTROL_AREA_HEIGHT),
+						DEAD_AREA_WIDTH,
+						CONTROL_AREA_HEIGHT,
+					);
+					ctx.stroke();
+					break;
+			}
 		}
 	}
 }
