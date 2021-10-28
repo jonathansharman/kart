@@ -6,6 +6,11 @@ export const clamp = (n: number, min: number, max: number): number => {
 	return Math.max(min, Math.min(max, n));
 }
 
+// Maps n in domain [min, max] linearly to range [min, max].
+export const mapToRange = (n: number, domain: [number, number], range: [number, number]): number => {
+	return range[0] + (n - domain[0]) / (domain[1] - domain[0]) * range[1];
+}
+
 // Mathematical modulus. 0 <= (x mod m) < m for m > 0.
 export const mod = (x: number, m: number): number => {
 	return (x % m + m) % m;

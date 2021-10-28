@@ -1,5 +1,6 @@
 import { CubicBezier, TAU, Vec2 } from "./math.js"
 
+const TRACK_RADIUS = 50.0;
 const TRACK_BORDER = 2.0;
 
 export class Corner {
@@ -124,3 +125,58 @@ export class Track {
 		ctx.stroke();
 	}
 }
+
+export const TEST_TRACKS: Track[] = [
+	new Track("Serpentine", TRACK_RADIUS, [
+		new Corner(new Vec2(100, 100), 0.5),
+		new Corner(new Vec2(100, 668), 0.5),
+		new Corner(new Vec2(250, 668), 1.0),
+		new Corner(new Vec2(250, 200), 1.0),
+		new Corner(new Vec2(400, 200), 1.0),
+		new Corner(new Vec2(400, 668), 1.0),
+		new Corner(new Vec2(550, 668), 1.0),
+		new Corner(new Vec2(550, 200), 1.0),
+		new Corner(new Vec2(700, 200), 1.0),
+		new Corner(new Vec2(700, 668), 1.0),
+		new Corner(new Vec2(850, 668), 0.5),
+		new Corner(new Vec2(850, 100), 0.5),
+	]),
+	new Track("Clockwise oval, tight turns", TRACK_RADIUS, [
+		new Corner(new Vec2(300, 300), 0.0),
+		new Corner(new Vec2(800, 300), 0.0),
+		new Corner(new Vec2(800, 500), 0.0),
+		new Corner(new Vec2(300, 500), 0.0),
+	]),
+	new Track("Counter-clockwise oval", TRACK_RADIUS, [
+		new Corner(new Vec2(300, 300), 1.0),
+		new Corner(new Vec2(300, 500), 1.0),
+		new Corner(new Vec2(800, 500), 1.0),
+		new Corner(new Vec2(800, 300), 1.0),
+	]),
+	new Track("Clockwise big track, tight turns", TRACK_RADIUS, [
+		new Corner(new Vec2(100, 100), 0.0),
+		new Corner(new Vec2(924, 100), 0.0),
+		new Corner(new Vec2(924, 668), 0.0),
+		new Corner(new Vec2(824, 668), 0.0),
+		new Corner(new Vec2(602, 568), 0.0),
+		new Corner(new Vec2(422, 568), 0.0),
+		new Corner(new Vec2(200, 668), 0.0),
+		new Corner(new Vec2(100, 668), 0.0),
+	]),
+	new Track("Counter-clockwise big track", TRACK_RADIUS, [
+		new Corner(new Vec2(100, 100), 0.5),
+		new Corner(new Vec2(100, 668), 1.0),
+		new Corner(new Vec2(200, 668), 1.0),
+		new Corner(new Vec2(422, 568), 1.0),
+		new Corner(new Vec2(602, 568), 1.0),
+		new Corner(new Vec2(824, 668), 1.0),
+		new Corner(new Vec2(924, 668), 1.0),
+		new Corner(new Vec2(924, 100), 0.5),
+	]),
+	new Track("Degenerate quad (triangle)", TRACK_RADIUS, [
+		new Corner(new Vec2(300, 300), 1.0),
+		new Corner(new Vec2(300, 500), 1.0),
+		new Corner(new Vec2(800, 400), 1.0),
+		new Corner(new Vec2(800, 400), 1.0),
+	]),
+];

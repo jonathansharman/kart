@@ -1,23 +1,71 @@
 import { Bumper } from "./bumper.js";
 import { Angle, Vec2 } from "./math.js"
+import { Track } from "./track.js";
+
+const ACCELERATION = 0.05;
+const ON_TRACK_DRAG = 0.01;
+const OFF_TRACK_DRAG = 0.03;
+const WALL_RESTITUTION = 0.7;
 
 export class Kart {
-	pos: Vec2;
-	speed: number;
-	heading: Angle;
-	steering: number;
+	// Gas pedal, from 0 to 1.
+	gas: number = 0.0;
+	// Brake pedal, from 0 to 1.
+	brake: number = 0.0;
+	steering: number = 0.0;
 
-	frontBumper: Bumper;
-	backBumper: Bumper;
+	private pos: Vec2 = new Vec2(0.0, 0.0);
+	private speed: number = 0.0;
+	private heading: Angle = new Angle(0.0);
 
-	constructor() {
-		this.pos = new Vec2(0.0, 0.0);
-		this.speed = 0.0;
-		this.heading = new Angle(0.0);
-		this.steering = 0.0;
+	private frontBumper: Bumper = new Bumper(15.0);
+	private backBumper: Bumper = new Bumper(10.0);
 
-		this.frontBumper = new Bumper(15.0);
-		this.backBumper = new Bumper(10.0);
+	getPos(): Vec2 {
+		return this.pos;
+	}
+
+	getSpeed(): number {
+		return this.speed;
+	}
+
+	getHeading(): Angle {
+		return this.heading;
+	}
+
+	update(track: Track, walls: Bumper[]) {
+		// Apply gas and brake.
+		this.speed -= ACCELERATION * this.brake;
+		this.speed += ACCELERATION * this.gas;
+
+		// Apply drag.
+		const drag = track.containsPoint(this.pos) ? ON_TRACK_DRAG : OFF_TRACK_DRAG;
+		this.speed *= 1.0 - drag;
+		// Update heading and position.
+		this.heading = this.heading.plus(this.steering * this.speed / 50.0);
+		this.pos = this.pos.plus(Vec2.fromPolar(this.speed, this.heading));
+
+		const offset = Vec2.fromPolar(20.0, this.heading);
+		this.frontBumper.pos = this.pos.plus(offset);
+		this.backBumper.pos = this.pos.minus(offset);
+
+		this.bumperCollision(walls, this.frontBumper);
+		this.bumperCollision(walls, this.backBumper);
+	}
+
+	private bumperCollision(walls: Bumper[], bumper: Bumper) {
+		for (let wall of walls) {
+			const r = bumper.radius + wall.radius;
+			let offset = new Vec2(bumper.pos.x - wall.pos.x, bumper.pos.y - wall.pos.y);
+			const d2 = offset.length2();
+			if (d2 != 0.0 && d2 < r * r) {
+				// Lose speed.
+				this.speed *= -WALL_RESTITUTION;
+				// Fix overlap.
+				const d = Math.sqrt(d2);
+				this.pos = this.pos.plus(offset.times((r - d) / d));
+			}
+		}
 	}
 
 	draw(ctx: CanvasRenderingContext2D, debug: boolean) {

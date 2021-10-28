@@ -1,4 +1,4 @@
-import { Vec2 } from "./math.js"
+import { TAU, Vec2 } from "./math.js"
 
 export class Bumper {
 	radius: number;
@@ -16,7 +16,7 @@ export class Bumper {
 			this.pos.x, this.pos.y,
 			this.radius, this.radius,
 			0.0,
-			0.0, 2.0 * Math.PI,
+			0.0, TAU,
 		);
 		ctx.fill();
 	}
