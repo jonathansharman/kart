@@ -77,17 +77,17 @@ var Kart = /** @class */ (function () {
         this.drawWheel(ctx, frontLeft, this.heading.plus(this.steering), wheelRadius, Math.PI / 6.0);
         this.drawWheel(ctx, backLeft, this.heading, wheelRadius, Math.PI / 6.0);
         this.drawWheel(ctx, backRight, this.heading, wheelRadius, Math.PI / 6.0);
-        ctx.beginPath();
-        ctx.moveTo(frontRight.x, frontRight.y);
-        ctx.lineTo(frontLeft.x, frontLeft.y);
-        ctx.lineTo(backLeft.x, backLeft.y);
-        ctx.lineTo(backRight.x, backRight.y);
-        ctx.closePath();
+        var chassis = new Path2D();
+        chassis.moveTo(frontRight.x, frontRight.y);
+        chassis.lineTo(frontLeft.x, frontLeft.y);
+        chassis.lineTo(backLeft.x, backLeft.y);
+        chassis.lineTo(backRight.x, backRight.y);
+        chassis.closePath();
         ctx.fillStyle = "rgb(180, 0, 0)";
-        ctx.fill();
+        ctx.fill(chassis);
         ctx.strokeStyle = "black";
         ctx.lineWidth = 1.0;
-        ctx.stroke();
+        ctx.stroke(chassis);
     };
     Kart.prototype.drawWheel = function (ctx, pos, angle, radius, angleOffset) {
         ctx.fillStyle = "black";
