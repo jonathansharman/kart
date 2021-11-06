@@ -1,8 +1,7 @@
-import { Bumper } from "./bumper.js";
 import { Controller, ControlMode, Device } from "./control.js";
+import { Course, TEST_COURSES } from "./course.js";
 import { Kart } from "./kart.js";
-import { mod, TAU, Vec2 } from "./math.js";
-import { TEST_TRACKS, Track } from "./track.js"
+import { mod, Vec2 } from "./math.js";
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d");
@@ -15,12 +14,8 @@ class Game {
 
 	kart: Kart = new Kart();
 
-	trackIdx: number = 0;
-	track: Track = TEST_TRACKS[0];
-
-	walls: Bumper[] = [
-		new Bumper(15.0, new Vec2(300.0, 300.0)),
-	];
+	courseIdx: number = 3;
+	course: Course = TEST_COURSES[this.courseIdx];
 
 	controller: Controller = new Controller(Device.Gamepad, ControlMode.Follow);
 
@@ -28,7 +23,7 @@ class Game {
 
 	update() {
 		this.controller.update(this.kart, this.camera);
-		this.kart.update(this.track, this.walls);
+		this.kart.update(this.course);
 		this.camera = this.kart.getPos();
 	}
 
@@ -52,18 +47,13 @@ class Game {
 	}
 
 	private drawWorld() {
-		this.track.drawWorld(ctx, this.debug);
-
-		// Draw walls.
-		for (const wall of this.walls) {
-			wall.draw(ctx);
-		}
+		this.course.drawWorld(ctx, this.debug);
 
 		this.kart.draw(ctx, this.debug);
 	}
 
 	private drawUI() {
-		this.track.drawUI(ctx, this.debug);
+		this.course.drawUI(ctx, this.debug);
 
 		this.controller.drawUI(ctx, this.debug);
 
@@ -71,7 +61,7 @@ class Game {
 			ctx.font = "20pt serif";
 			const x = 10;
 			const y = 70;
-			if (this.track.containsPoint(this.kart.getPos())) {
+			if (this.course.track.containsPoint(this.kart.getPos())) {
 				ctx.fillStyle = "cyan";
 				ctx.fillText("On track", x, y);
 			} else {
@@ -94,12 +84,12 @@ window.addEventListener("keydown", (event: KeyboardEvent) => {
 			game.debug = !game.debug;
 			return false;
 		case "ArrowLeft":
-			game.trackIdx = mod(game.trackIdx - 1, TEST_TRACKS.length);
-			game.track = TEST_TRACKS[game.trackIdx];
+			game.courseIdx = mod(game.courseIdx - 1, TEST_COURSES.length);
+			game.course = TEST_COURSES[game.courseIdx];
 			return false;
 		case "ArrowRight":
-			game.trackIdx = mod(game.trackIdx + 1, TEST_TRACKS.length);
-			game.track = TEST_TRACKS[game.trackIdx];
+			game.courseIdx = mod(game.courseIdx + 1, TEST_COURSES.length);
+			game.course = TEST_COURSES[game.courseIdx];
 			return false;
 	}
 });

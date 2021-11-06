@@ -18,8 +18,8 @@ export const mod = (x: number, m: number): number => {
 
 // 2D vector.
 export class Vec2 {
-	public x: number;
-	public y: number;
+	x: number;
+	y: number;
 
 	constructor(x: number, y: number) {
 		this.x = x;
@@ -83,8 +83,9 @@ export class Vec2 {
 
 // 2D line segment from start to end.
 export class Segment2 {
-	public start: Vec2;
-	public end: Vec2;
+	start: Vec2;
+	end: Vec2;
+
 	private offset: Vec2;
 
 	constructor(start: Vec2, end: Vec2) {
@@ -100,6 +101,16 @@ export class Segment2 {
 		}
 		const t = clamp(p.minus(this.start).dot(this.offset) / this.offset.length2(), 0.0, 1.0);
 		return p.minus(this.start.plus(this.offset.times(t))).length2();
+	}
+}
+
+export class Disk {
+	center: Vec2;
+	radius: number;
+
+	constructor(center: Vec2, radius: number) {
+		this.center = center;
+		this.radius = radius;
 	}
 }
 

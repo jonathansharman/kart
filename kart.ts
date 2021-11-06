@@ -1,6 +1,6 @@
-import { Bumper } from "./bumper.js";
-import { Angle, Vec2 } from "./math.js"
-import { Track } from "./track.js";
+import { Course } from "./course.js";
+import { Angle, Disk, TAU, Vec2 } from "./math.js"
+import { Wall } from "./wall.js";
 
 const ACCELERATION = 0.05;
 const ON_TRACK_DRAG = 0.01;
@@ -18,8 +18,8 @@ export class Kart {
 	private speed: number = 0.0;
 	private heading: Angle = new Angle(0.0);
 
-	private frontBumper: Bumper = new Bumper(15.0);
-	private backBumper: Bumper = new Bumper(10.0);
+	private frontBumper: Disk = new Disk(new Vec2(0.0, 0.0), 15.0);
+	private backBumper: Disk = new Disk(new Vec2(0.0, 0.0), 10.0);
 
 	getPos(): Vec2 {
 		return this.pos;
@@ -33,37 +33,36 @@ export class Kart {
 		return this.heading;
 	}
 
-	update(track: Track, walls: Bumper[]) {
+	update(course: Course) {
 		// Apply gas and brake.
 		this.speed -= ACCELERATION * this.brake;
 		this.speed += ACCELERATION * this.gas;
 
 		// Apply drag.
-		const drag = track.containsPoint(this.pos) ? ON_TRACK_DRAG : OFF_TRACK_DRAG;
+		const drag = course.track.containsPoint(this.pos) ? ON_TRACK_DRAG : OFF_TRACK_DRAG;
 		this.speed *= 1.0 - drag;
 		// Update heading and position.
 		this.heading = this.heading.plus(this.steering * this.speed / 50.0);
 		this.pos = this.pos.plus(Vec2.fromPolar(this.speed, this.heading));
 
 		const offset = Vec2.fromPolar(20.0, this.heading);
-		this.frontBumper.pos = this.pos.plus(offset);
-		this.backBumper.pos = this.pos.minus(offset);
+		this.frontBumper.center = this.pos.plus(offset);
+		this.backBumper.center = this.pos.minus(offset);
 
-		this.bumperCollision(walls, this.frontBumper);
-		this.bumperCollision(walls, this.backBumper);
+		this.bumperCollision(course.walls, this.frontBumper);
+		this.bumperCollision(course.walls, this.backBumper);
 	}
 
-	private bumperCollision(walls: Bumper[], bumper: Bumper) {
+	private bumperCollision(walls: Wall[], bumper: Disk) {
 		for (let wall of walls) {
-			const r = bumper.radius + wall.radius;
-			let offset = new Vec2(bumper.pos.x - wall.pos.x, bumper.pos.y - wall.pos.y);
+			const offset = bumper.center.minus(wall.projectPoint(bumper.center));
 			const d2 = offset.length2();
-			if (d2 != 0.0 && d2 < r * r) {
+			if (d2 < bumper.radius * bumper.radius) {
 				// Lose speed.
 				this.speed *= -WALL_RESTITUTION;
 				// Fix overlap.
 				const d = Math.sqrt(d2);
-				this.pos = this.pos.plus(offset.times((r - d) / d));
+				this.pos = this.pos.plus(offset.times((bumper.radius - d) / d));
 			}
 		}
 	}
@@ -94,8 +93,8 @@ export class Kart {
 		);
 
 		if (debug) {
-			this.frontBumper.draw(ctx);
-			this.backBumper.draw(ctx);
+			this.drawBumper(ctx, this.frontBumper);
+			this.drawBumper(ctx, this.backBumper);
 		}
 
 		const wheelRadius = 8.0;
@@ -137,6 +136,18 @@ export class Kart {
 			pos.y + radius * angle.minus(angleOffset - Math.PI).sin(),
 		);
 		ctx.closePath();
+		ctx.fill();
+	}
+
+	private drawBumper(ctx: CanvasRenderingContext2D, bumper: Disk) {
+		ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+		ctx.beginPath();
+		ctx.ellipse(
+			bumper.center.x, bumper.center.y,
+			bumper.radius, bumper.radius,
+			0.0,
+			0.0, TAU,
+		);
 		ctx.fill();
 	}
 }

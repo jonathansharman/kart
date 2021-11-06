@@ -1,4 +1,4 @@
-import { CubicBezier } from "./math.js";
+import { CubicBezier, Vec2 } from "./math.js";
 var SplineCorner = /** @class */ (function () {
     function SplineCorner(vertex, smoothness) {
         this.vertex = vertex;
@@ -7,8 +7,15 @@ var SplineCorner = /** @class */ (function () {
     return SplineCorner;
 }());
 export { SplineCorner };
+export var corner = function (x, y, smoothness) {
+    return new SplineCorner(new Vec2(x, y), smoothness);
+};
 var SplineLoop = /** @class */ (function () {
-    function SplineLoop(corners) {
+    function SplineLoop() {
+        var corners = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            corners[_i] = arguments[_i];
+        }
         // Build a list of unit offset vectors from each vertex to its control
         // point in the forward direction.
         var forwardCPOffsets = [];
@@ -37,22 +44,39 @@ var SplineLoop = /** @class */ (function () {
             this.sections.push(new CubicBezier(start, end, cp1, cp2));
         }
     }
+    // Whether p is within distance of this spline loop's boundary.
     SplineLoop.prototype.pointIsWithinDistance = function (p, distance) {
         for (var _i = 0, _a = this.sections; _i < _a.length; _i++) {
-            var curve = _a[_i];
-            if (curve.projectPoint(p).minus(p).length2() < distance * distance) {
+            var section = _a[_i];
+            if (section.projectPoint(p).minus(p).length2() < distance * distance) {
                 return true;
             }
         }
         return false;
+    };
+    // The point on this spline loop closest to the given point.
+    SplineLoop.prototype.projectPoint = function (p) {
+        // Find the projection of p onto this loop's sections that is closest to p.
+        var nearest;
+        var minDistance2 = Number.POSITIVE_INFINITY;
+        for (var _i = 0, _a = this.sections; _i < _a.length; _i++) {
+            var section = _a[_i];
+            var projection = section.projectPoint(p);
+            var distance2 = projection.minus(p).length2();
+            if (projection.minus(p).length2() < minDistance2) {
+                nearest = projection;
+                minDistance2 = distance2;
+            }
+        }
+        return nearest;
     };
     SplineLoop.prototype.getPath = function () {
         var path = new Path2D();
         var start = this.sections[0].start;
         path.moveTo(start.x, start.y);
         for (var _i = 0, _a = this.sections; _i < _a.length; _i++) {
-            var curve = _a[_i];
-            path.bezierCurveTo(curve.cp1.x, curve.cp1.y, curve.cp2.x, curve.cp2.y, curve.end.x, curve.end.y);
+            var section = _a[_i];
+            path.bezierCurveTo(section.cp1.x, section.cp1.y, section.cp2.x, section.cp2.y, section.end.x, section.end.y);
         }
         path.closePath();
         return path;

@@ -3,8 +3,11 @@ var Wall = /** @class */ (function () {
         this.loop = loop;
         this.path = loop.getPath();
     }
-    Wall.prototype.drawWorld = function (ctx) {
-        ctx.fillStyle = "black";
+    Wall.prototype.projectPoint = function (p) {
+        return this.loop.projectPoint(p);
+    };
+    Wall.prototype.draw = function (ctx) {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
         ctx.fill(this.path);
     };
     return Wall;

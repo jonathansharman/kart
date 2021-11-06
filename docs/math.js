@@ -79,6 +79,14 @@ var Segment2 = /** @class */ (function () {
     return Segment2;
 }());
 export { Segment2 };
+var Disk = /** @class */ (function () {
+    function Disk(center, radius) {
+        this.center = center;
+        this.radius = radius;
+    }
+    return Disk;
+}());
+export { Disk };
 // Maintains an angle in radians, normalized to [0, tau).
 var Angle = /** @class */ (function () {
     function Angle(radians) {

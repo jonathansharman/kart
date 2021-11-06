@@ -11,10 +11,14 @@ export class SplineCorner {
 	}
 }
 
+export const corner = (x: number, y: number, smoothness: number): SplineCorner => {
+	return new SplineCorner(new Vec2(x, y), smoothness);
+}
+
 export class SplineLoop {
 	sections: CubicBezier[];
 
-	constructor(corners: SplineCorner[]) {
+	constructor(...corners: SplineCorner[]) {
 		// Build a list of unit offset vectors from each vertex to its control
 		// point in the forward direction.
 		let forwardCPOffsets: Vec2[] = [];
@@ -45,24 +49,41 @@ export class SplineLoop {
 		}
 	}
 
+	// Whether p is within distance of this spline loop's boundary.
 	pointIsWithinDistance(p: Vec2, distance: number): boolean {
-		for (let curve of this.sections) {
-			if (curve.projectPoint(p).minus(p).length2() < distance * distance) {
+		for (let section of this.sections) {
+			if (section.projectPoint(p).minus(p).length2() < distance * distance) {
 				return true;
 			}
 		}
 		return false;
 	}
 
+	// The point on this spline loop closest to the given point.
+	projectPoint(p: Vec2): Vec2 {
+		// Find the projection of p onto this loop's sections that is closest to p.
+		let nearest: Vec2;
+		let minDistance2 = Number.POSITIVE_INFINITY;
+		for (let section of this.sections) {
+			const projection = section.projectPoint(p);
+			const distance2 = projection.minus(p).length2();
+			if (projection.minus(p).length2() < minDistance2) {
+				nearest = projection;
+				minDistance2 = distance2;
+			}
+		}
+		return nearest;
+	}
+
 	getPath(): Path2D {
 		const path = new Path2D();
 		const start = this.sections[0].start;
 		path.moveTo(start.x, start.y);
-		for (let curve of this.sections) {
+		for (let section of this.sections) {
 			path.bezierCurveTo(
-				curve.cp1.x, curve.cp1.y,
-				curve.cp2.x, curve.cp2.y,
-				curve.end.x, curve.end.y,
+				section.cp1.x, section.cp1.y,
+				section.cp2.x, section.cp2.y,
+				section.end.x, section.end.y,
 			);
 		}
 		path.closePath();

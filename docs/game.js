@@ -1,8 +1,7 @@
-import { Bumper } from "./bumper.js";
 import { Controller, ControlMode, Device } from "./control.js";
+import { TEST_COURSES } from "./course.js";
 import { Kart } from "./kart.js";
 import { mod, Vec2 } from "./math.js";
-import { TEST_TRACKS } from "./track.js";
 var canvas = document.getElementById("canvas");
 var ctx = canvas.getContext("2d");
 var UPDATES_PER_SEC = 60.0;
@@ -11,17 +10,14 @@ var Game = /** @class */ (function () {
     function Game() {
         this.debug = false;
         this.kart = new Kart();
-        this.trackIdx = 0;
-        this.track = TEST_TRACKS[0];
-        this.walls = [
-            new Bumper(15.0, new Vec2(300.0, 300.0)),
-        ];
+        this.courseIdx = 3;
+        this.course = TEST_COURSES[this.courseIdx];
         this.controller = new Controller(Device.Gamepad, ControlMode.Follow);
         this.camera = new Vec2(0.0, 0.0);
     }
     Game.prototype.update = function () {
         this.controller.update(this.kart, this.camera);
-        this.kart.update(this.track, this.walls);
+        this.kart.update(this.course);
         this.camera = this.kart.getPos();
     };
     Game.prototype.draw = function (_timestamp) {
@@ -40,22 +36,17 @@ var Game = /** @class */ (function () {
         window.requestAnimationFrame(this.draw.bind(this));
     };
     Game.prototype.drawWorld = function () {
-        this.track.drawWorld(ctx, this.debug);
-        // Draw walls.
-        for (var _i = 0, _a = this.walls; _i < _a.length; _i++) {
-            var wall = _a[_i];
-            wall.draw(ctx);
-        }
+        this.course.drawWorld(ctx, this.debug);
         this.kart.draw(ctx, this.debug);
     };
     Game.prototype.drawUI = function () {
-        this.track.drawUI(ctx, this.debug);
+        this.course.drawUI(ctx, this.debug);
         this.controller.drawUI(ctx, this.debug);
         if (this.debug) {
             ctx.font = "20pt serif";
             var x = 10;
             var y = 70;
-            if (this.track.containsPoint(this.kart.getPos())) {
+            if (this.course.track.containsPoint(this.kart.getPos())) {
                 ctx.fillStyle = "cyan";
                 ctx.fillText("On track", x, y);
             }
@@ -77,12 +68,12 @@ window.addEventListener("keydown", function (event) {
             game.debug = !game.debug;
             return false;
         case "ArrowLeft":
-            game.trackIdx = mod(game.trackIdx - 1, TEST_TRACKS.length);
-            game.track = TEST_TRACKS[game.trackIdx];
+            game.courseIdx = mod(game.courseIdx - 1, TEST_COURSES.length);
+            game.course = TEST_COURSES[game.courseIdx];
             return false;
         case "ArrowRight":
-            game.trackIdx = mod(game.trackIdx + 1, TEST_TRACKS.length);
-            game.track = TEST_TRACKS[game.trackIdx];
+            game.courseIdx = mod(game.courseIdx + 1, TEST_COURSES.length);
+            game.course = TEST_COURSES[game.courseIdx];
             return false;
     }
 });
