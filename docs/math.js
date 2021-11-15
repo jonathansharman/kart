@@ -29,6 +29,9 @@ var Vec2 = /** @class */ (function () {
     Vec2.prototype.normalized = function () {
         return this.dividedBy(this.length());
     };
+    Vec2.prototype.normalizedTo = function (length) {
+        return this.times(length).dividedBy(this.length());
+    };
     Vec2.prototype.plus = function (that) {
         return new Vec2(this.x + that.x, this.y + that.y);
     };
@@ -57,6 +60,13 @@ var Vec2 = /** @class */ (function () {
     };
     Vec2.prototype.rotatedThreeQuarters = function () {
         return new Vec2(this.y, -this.x);
+    };
+    // A new Vec2 in the same direction as this Vec2 with length extended the
+    // given amount. Undefined for the zero vector. Negative extension is
+    // supported.
+    Vec2.prototype.extended = function (extension) {
+        var l = this.length();
+        return this.times(l + extension).dividedBy(l);
     };
     return Vec2;
 }());
@@ -154,12 +164,12 @@ var CubicBezier = /** @class */ (function () {
     };
     // The point on this Bezier curve closest to the given point, based on
     // sampling. The number of samples must be a positive integer.
-    CubicBezier.prototype.projectPoint = function (p, nSamples) {
-        if (nSamples === void 0) { nSamples = 100; }
+    CubicBezier.prototype.projectPoint = function (p, sampleCount) {
+        if (sampleCount === void 0) { sampleCount = 100; }
         var minD2 = Infinity;
         var closest;
-        for (var i = 0; i < nSamples; ++i) {
-            var q = this.at(i / (nSamples - 1));
+        for (var i = 0; i < sampleCount; ++i) {
+            var q = this.at(i / (sampleCount - 1));
             var d2 = q.minus(p).length2();
             if (d2 < minD2) {
                 minD2 = d2;

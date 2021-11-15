@@ -49,6 +49,44 @@ export class SplineLoop {
 		}
 	}
 
+	// Whether the given point lies within this spline loop, based on sampling
+	// using a variant of the winding number algorithm. The number of samples
+	// must be a positive integer.
+	containsPoint(p: Vec2, samplesPerSection: number = 100): boolean {
+		let lastQuadrant = this.quadrant(this.sections[0].at(0).minus(p));
+		let winding = 0;
+		for (let section of this.sections) {
+			// Start at i = 1 since there's redundancy at the endpoints.
+			for (let i = 1; i < samplesPerSection; ++i) {
+				const q = section.at(i / (samplesPerSection - 1));
+				const quadrant = this.quadrant(q.minus(p));
+				switch ((quadrant - lastQuadrant + 4) % 4) {
+					case 0:
+						break;
+					case 1:
+						++winding;
+						break;
+					case 2:
+						// Crossed to the opposite quadrant. Treat this as non-containment.
+						return false;
+					case 3:
+						--winding;
+						break;
+				}
+				lastQuadrant = quadrant;
+			}
+		}
+		return winding != 0;
+	}
+
+	private quadrant(v: Vec2): number {
+		if (v.y >= 0) {
+			return v.x >= 0 ? 0 : 1
+		} else {
+			return v.x <= 0 ? 2 : 3
+		}
+	}
+
 	// Whether p is within distance of this spline loop's boundary.
 	pointIsWithinDistance(p: Vec2, distance: number): boolean {
 		for (let section of this.sections) {

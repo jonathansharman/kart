@@ -42,6 +42,10 @@ export class Vec2 {
 		return this.dividedBy(this.length());
 	}
 
+	normalizedTo(length: number): Vec2 {
+		return this.times(length).dividedBy(this.length());
+	}
+
 	plus(that: Vec2): Vec2 {
 		return new Vec2(this.x + that.x, this.y + that.y);
 	}
@@ -78,6 +82,14 @@ export class Vec2 {
 
 	rotatedThreeQuarters(): Vec2 {
 		return new Vec2(this.y, -this.x);
+	}
+
+	// A new Vec2 in the same direction as this Vec2 with length extended the
+	// given amount. Undefined for the zero vector. Negative extension is
+	// supported.
+	extended(extension: number): Vec2 {
+		let l = this.length();
+		return this.times(l + extension).dividedBy(l);
 	}
 }
 
@@ -201,11 +213,11 @@ export class CubicBezier {
 
 	// The point on this Bezier curve closest to the given point, based on
 	// sampling. The number of samples must be a positive integer.
-	projectPoint(p: Vec2, nSamples: number = 100): Vec2 {
+	projectPoint(p: Vec2, sampleCount: number = 100): Vec2 {
 		let minD2 = Infinity;
 		let closest: Vec2;
-		for (let i = 0; i < nSamples; ++i) {
-			const q = this.at(i / (nSamples - 1));
+		for (let i = 0; i < sampleCount; ++i) {
+			const q = this.at(i / (sampleCount - 1));
 			const d2 = q.minus(p).length2();
 			if (d2 < minD2) {
 				minD2 = d2;

@@ -45,26 +45,40 @@ export class Kart {
 		this.heading = this.heading.plus(this.steering * this.speed / 50.0);
 		this.pos = this.pos.plus(Vec2.fromPolar(this.speed, this.heading));
 
+		this.repositionBumpers();
+
+		const frontCollision = this.bumperCollision(course.walls, this.frontBumper);
+		const backCollision = this.bumperCollision(course.walls, this.backBumper);
+		if (frontCollision || backCollision) {
+			// There may be multiple collisions in a single frame, but the kart
+			// should bounce at most once per frame.
+			this.speed *= -WALL_RESTITUTION;
+		}
+	}
+
+	private repositionBumpers() {
 		const offset = Vec2.fromPolar(20.0, this.heading);
 		this.frontBumper.center = this.pos.plus(offset);
 		this.backBumper.center = this.pos.minus(offset);
-
-		this.bumperCollision(course.walls, this.frontBumper);
-		this.bumperCollision(course.walls, this.backBumper);
 	}
 
-	private bumperCollision(walls: Wall[], bumper: Disk) {
+	private bumperCollision(walls: Wall[], bumper: Disk): boolean {
+		let collided = false;
 		for (let wall of walls) {
-			const offset = bumper.center.minus(wall.projectPoint(bumper.center));
-			const d2 = offset.length2();
-			if (d2 < bumper.radius * bumper.radius) {
-				// Lose speed.
-				this.speed *= -WALL_RESTITUTION;
-				// Fix overlap.
-				const d = Math.sqrt(d2);
-				this.pos = this.pos.plus(offset.times((bumper.radius - d) / d));
+			const bumperToWall = wall.projectPoint(bumper.center).minus(bumper.center);
+			if (wall.containsPoint(bumper.center)) {
+				collided = true;
+				// Push out from inside the wall (towards its boundary).
+				this.pos = this.pos.plus(bumperToWall.extended(bumper.radius));
+				this.repositionBumpers();
+			} else if (bumperToWall.length2() < bumper.radius * bumper.radius) {
+				collided = true;
+				// Push away from outside the wall (away from its boundary).
+				this.pos = this.pos.plus(bumperToWall.extended(-bumper.radius));
+				this.repositionBumpers();
 			}
 		}
+		return collided;
 	}
 
 	draw(ctx: CanvasRenderingContext2D, debug: boolean) {
