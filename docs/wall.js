@@ -6,6 +6,9 @@ var Wall = /** @class */ (function () {
     Wall.prototype.projectPoint = function (p) {
         return this.loop.projectPoint(p);
     };
+    Wall.prototype.containsPoint = function (p) {
+        return this.loop.containsPoint(p);
+    };
     Wall.prototype.draw = function (ctx) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
         ctx.fill(this.path);

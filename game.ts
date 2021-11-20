@@ -1,5 +1,5 @@
 import { Controller, ControlMode, Device } from "./control.js";
-import { Course, TEST_COURSES } from "./course.js";
+import { Course, COURSE_ZONES, TEST_COURSES } from "./course.js";
 import { Kart } from "./kart.js";
 import { mod, Vec2 } from "./math.js";
 
@@ -10,21 +10,83 @@ const UPDATES_PER_SEC = 60.0;
 const MS_PER_UPDATE = 1000.0 / UPDATES_PER_SEC;
 
 class Game {
-	debug: boolean = false;
+	private debug: boolean = false;
 
-	kart: Kart = new Kart();
+	private courseIdx: number = 3;
+	private course: Course = TEST_COURSES[this.courseIdx];
 
-	courseIdx: number = 3;
-	course: Course = TEST_COURSES[this.courseIdx];
+	private kart: Kart;
 
-	controller: Controller = new Controller(Device.Gamepad, ControlMode.Follow);
+	private lastZone: number = 0;
+	private subLaps: number = 0;
+	private laps: number = 0;
 
-	camera: Vec2 = new Vec2(0.0, 0.0);
+	private controller: Controller = new Controller(Device.Gamepad, ControlMode.Follow);
+
+	private camera: Vec2 = new Vec2(0.0, 0.0);
+
+	constructor() {
+		const startingRay = this.course.track.startingRay
+		this.kart = new Kart(startingRay.origin, startingRay.angle);
+
+		// Add debug event listeners.
+		window.addEventListener("keydown", (event: KeyboardEvent) => {
+			switch (event.code) {
+				case "KeyD":
+					this.debug = !this.debug;
+					return false;
+				case "ArrowLeft":
+					{
+						this.courseIdx = mod(this.courseIdx - 1, TEST_COURSES.length);
+						this.course = TEST_COURSES[this.courseIdx];
+						const startingRay = this.course.track.startingRay;
+						this.kart = new Kart(startingRay.origin, startingRay.angle);
+						this.lastZone = 0;
+						this.subLaps = 0;
+						this.laps = 0;
+						return false;
+					}
+				case "ArrowRight":
+					{
+						this.courseIdx = mod(this.courseIdx + 1, TEST_COURSES.length);
+						this.course = TEST_COURSES[this.courseIdx];
+						const startingRay = this.course.track.startingRay;
+						this.kart = new Kart(startingRay.origin, startingRay.angle);
+						this.lastZone = 0;
+						this.subLaps = 0;
+						this.laps = 0;
+						return false;
+					}
+			}
+		});
+
+		// Start the update loop.
+		window.setInterval(this.update.bind(this), MS_PER_UPDATE);
+	}
 
 	update() {
 		this.controller.update(this.kart, this.camera);
 		this.kart.update(this.course);
 		this.camera = this.kart.getPos();
+
+		const zone = this.course.zone(this.kart.getPos());
+		switch ((zone - this.lastZone + COURSE_ZONES) % COURSE_ZONES) {
+			case COURSE_ZONES - 1:
+				--this.subLaps;
+				break;
+			case 1:
+				++this.subLaps;
+				break;
+		}
+		if (this.subLaps >= COURSE_ZONES) {
+			this.subLaps -= COURSE_ZONES;
+			++this.laps;
+		} else if (this.subLaps < -COURSE_ZONES) {
+			this.subLaps += COURSE_ZONES;
+		}
+		this.lastZone = zone;
+
+		window.requestAnimationFrame(this.draw.bind(this));
 	}
 
 	draw(_timestamp: DOMHighResTimeStamp) {
@@ -42,8 +104,6 @@ class Game {
 		// Restore the ctx state to undo the camera transform and draw the UI.
 		ctx.restore();
 		this.drawUI();
-
-		window.requestAnimationFrame(this.draw.bind(this));
 	}
 
 	private drawWorld() {
@@ -59,40 +119,31 @@ class Game {
 
 		if (this.debug) {
 			ctx.font = "20pt serif";
-			const x = 10;
-			const y = 70;
+
+			let trackText;
 			if (this.course.track.containsPoint(this.kart.getPos())) {
 				ctx.fillStyle = "cyan";
-				ctx.fillText("On track", x, y);
+				trackText = "On track";
 			} else {
 				ctx.fillStyle = "red";
-				ctx.fillText("Off track", x, y);
+				trackText = "Off track";
 			}
+			ctx.fillText(trackText, 10, 70);
+
+			ctx.fillStyle = "black";
+			ctx.fillText("Zone " + this.course.zone(this.kart.getPos()), 10, 110);
+
+			ctx.fillStyle = "black";
+			ctx.fillText("Sublaps " + this.subLaps, 10, 150);
+
+			ctx.fillStyle = "black";
+			ctx.fillText("Laps " + this.laps, 10, 190);
 		}
 	}
 }
 
-const game = new Game();
-
 // Disable context menu on right-click.
 window.oncontextmenu = () => false;
-
-// Add debug event listeners.
-window.addEventListener("keydown", (event: KeyboardEvent) => {
-	switch (event.code) {
-		case "KeyD":
-			game.debug = !game.debug;
-			return false;
-		case "ArrowLeft":
-			game.courseIdx = mod(game.courseIdx - 1, TEST_COURSES.length);
-			game.course = TEST_COURSES[game.courseIdx];
-			return false;
-		case "ArrowRight":
-			game.courseIdx = mod(game.courseIdx + 1, TEST_COURSES.length);
-			game.course = TEST_COURSES[game.courseIdx];
-			return false;
-	}
-});
 
 // Make the canvas fill the window.
 canvas.width = window.innerWidth;
@@ -103,8 +154,5 @@ window.addEventListener("resize", () => {
 	return false;
 });
 
-// Update loop
-window.setInterval(game.update.bind(game), MS_PER_UPDATE);
-
-// Render loop
-window.requestAnimationFrame(game.draw.bind(game));
+// Start the game.
+new Game();

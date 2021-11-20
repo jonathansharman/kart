@@ -44,6 +44,61 @@ var SplineLoop = /** @class */ (function () {
             this.sections.push(new CubicBezier(start, end, cp1, cp2));
         }
     }
+    // The point on the spline loop at the given t in [0, 1]. The sections of
+    // the spline loop share the parameter space uniformly (regardless of their
+    // individual lengths).
+    SplineLoop.prototype.at = function (t) {
+        var idx = Math.floor(t * this.sections.length) % this.sections.length;
+        var sectionT = (t * this.sections.length) % 1;
+        return this.sections[idx].at(sectionT);
+    };
+    // The derivative of the spline loop at the given t in [0, 1]. The sections
+    // of the spline loop share the parameter space uniformly (regardless of
+    // their individual lengths).
+    SplineLoop.prototype.derivativeAt = function (t) {
+        var idx = Math.floor(t * this.sections.length) % this.sections.length;
+        var sectionT = (t * this.sections.length) % 1;
+        return this.sections[idx].derivativeAt(sectionT);
+    };
+    // Whether the given point lies within this spline loop, based on sampling
+    // using a variant of the winding number algorithm. The number of samples
+    // must be a positive integer.
+    SplineLoop.prototype.containsPoint = function (p, samplesPerSection) {
+        if (samplesPerSection === void 0) { samplesPerSection = 100; }
+        var lastQuadrant = this.quadrant(this.sections[0].at(0).minus(p));
+        var winding = 0;
+        for (var _i = 0, _a = this.sections; _i < _a.length; _i++) {
+            var section = _a[_i];
+            // Start at i = 1 since there's redundancy at the endpoints.
+            for (var i = 1; i < samplesPerSection; ++i) {
+                var q = section.at(i / (samplesPerSection - 1));
+                var quadrant = this.quadrant(q.minus(p));
+                switch ((quadrant - lastQuadrant + 4) % 4) {
+                    case 0:
+                        break;
+                    case 1:
+                        ++winding;
+                        break;
+                    case 2:
+                        // Crossed to the opposite quadrant. Treat this as non-containment.
+                        return false;
+                    case 3:
+                        --winding;
+                        break;
+                }
+                lastQuadrant = quadrant;
+            }
+        }
+        return winding != 0;
+    };
+    SplineLoop.prototype.quadrant = function (v) {
+        if (v.y >= 0) {
+            return v.x >= 0 ? 0 : 1;
+        }
+        else {
+            return v.x <= 0 ? 2 : 3;
+        }
+    };
     // Whether p is within distance of this spline loop's boundary.
     SplineLoop.prototype.pointIsWithinDistance = function (p, distance) {
         for (var _i = 0, _a = this.sections; _i < _a.length; _i++) {
