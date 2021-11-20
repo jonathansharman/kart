@@ -49,6 +49,24 @@ export class SplineLoop {
 		}
 	}
 
+	// The point on the spline loop at the given t in [0, 1]. The sections of
+	// the spline loop share the parameter space uniformly (regardless of their
+	// individual lengths).
+	at(t: number): Vec2 {
+		const idx = Math.floor(t * this.sections.length) % this.sections.length;
+		const sectionT = (t * this.sections.length) % 1;
+		return this.sections[idx].at(sectionT);
+	}
+
+	// The derivative of the spline loop at the given t in [0, 1]. The sections
+	// of the spline loop share the parameter space uniformly (regardless of
+	// their individual lengths).
+	derivativeAt(t: number): Vec2 {
+		const idx = Math.floor(t * this.sections.length) % this.sections.length;
+		const sectionT = (t * this.sections.length) % 1;
+		return this.sections[idx].derivativeAt(sectionT);
+	}
+
 	// Whether the given point lies within this spline loop, based on sampling
 	// using a variant of the winding number algorithm. The number of samples
 	// must be a positive integer.

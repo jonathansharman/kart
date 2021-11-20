@@ -1,20 +1,20 @@
-import { Angle, Disk, TAU, Vec2 } from "./math.js";
+import { Disk, TAU, Vec2 } from "./math.js";
 var ACCELERATION = 0.05;
 var ON_TRACK_DRAG = 0.01;
 var OFF_TRACK_DRAG = 0.03;
 var WALL_RESTITUTION = 0.7;
 var Kart = /** @class */ (function () {
-    function Kart() {
+    function Kart(pos, heading) {
         // Gas pedal, from 0 to 1.
         this.gas = 0.0;
         // Brake pedal, from 0 to 1.
         this.brake = 0.0;
         this.steering = 0.0;
-        this.pos = new Vec2(0.0, 0.0);
         this.speed = 0.0;
-        this.heading = new Angle(0.0);
         this.frontBumper = new Disk(new Vec2(0.0, 0.0), 15.0);
         this.backBumper = new Disk(new Vec2(0.0, 0.0), 10.0);
+        this.pos = pos;
+        this.heading = heading;
     }
     Kart.prototype.getPos = function () {
         return this.pos;
@@ -113,9 +113,9 @@ var Kart = /** @class */ (function () {
     };
     Kart.prototype.drawBumper = function (ctx, bumper) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
-        ctx.beginPath();
-        ctx.ellipse(bumper.center.x, bumper.center.y, bumper.radius, bumper.radius, 0.0, 0.0, TAU);
-        ctx.fill();
+        var path = new Path2D();
+        path.ellipse(bumper.center.x, bumper.center.y, bumper.radius, bumper.radius, 0.0, 0.0, TAU);
+        ctx.fill(path);
     };
     return Kart;
 }());

@@ -190,6 +190,16 @@ export class Angle {
 	}
 }
 
+export class Ray2 {
+	origin: Vec2;
+	angle: Angle;
+
+	constructor(origin: Vec2, angle: Angle) {
+		this.origin = origin;
+		this.angle = angle;
+	}
+}
+
 export class CubicBezier {
 	start: Vec2;
 	end: Vec2;
@@ -209,6 +219,16 @@ export class CubicBezier {
 			.plus(this.cp1.times(3 * (1 - t) * (1 - t) * t))
 			.plus(this.cp2.times(3 * (1 - t) * t * t))
 			.plus(this.end.times(t * t * t));
+	}
+
+	// The derivative of the curve at the given t in [0, 1].
+	derivativeAt(t: number): Vec2 {
+		return this.start.times(-3 * (1 - t) * (1 - t))
+			.plus(this.cp1.times(3 * (1 - t) * (1 - t)))
+			.minus(this.cp1.times(6 * t * (1 - t)))
+			.minus(this.cp2.times(3 * t * t))
+			.plus(this.cp2.times(6 * t * (1 - t)))
+			.plus(this.end.times(3 * t * t));
 	}
 
 	// The point on this Bezier curve closest to the given point, based on

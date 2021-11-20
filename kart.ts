@@ -14,12 +14,17 @@ export class Kart {
 	brake: number = 0.0;
 	steering: number = 0.0;
 
-	private pos: Vec2 = new Vec2(0.0, 0.0);
+	private pos: Vec2;
 	private speed: number = 0.0;
-	private heading: Angle = new Angle(0.0);
+	private heading: Angle;
 
 	private frontBumper: Disk = new Disk(new Vec2(0.0, 0.0), 15.0);
 	private backBumper: Disk = new Disk(new Vec2(0.0, 0.0), 10.0);
+
+	constructor(pos: Vec2, heading: Angle) {
+		this.pos = pos;
+		this.heading = heading;
+	}
 
 	getPos(): Vec2 {
 		return this.pos;
@@ -155,13 +160,13 @@ export class Kart {
 
 	private drawBumper(ctx: CanvasRenderingContext2D, bumper: Disk) {
 		ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
-		ctx.beginPath();
-		ctx.ellipse(
+		const path = new Path2D();
+		path.ellipse(
 			bumper.center.x, bumper.center.y,
 			bumper.radius, bumper.radius,
 			0.0,
 			0.0, TAU,
 		);
-		ctx.fill();
+		ctx.fill(path);
 	}
 }

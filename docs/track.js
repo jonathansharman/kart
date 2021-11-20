@@ -1,11 +1,13 @@
+import { Angle, Ray2, TAU, Vec2 } from "./math.js";
 var TRACK_BORDER = 2.0;
 // Represents a track/course/level of the game. Consists of the track/road
 // itself and at least one wall.
 var Track = /** @class */ (function () {
-    function Track(radius, trackLoop) {
+    function Track(radius, startingT, trackLoop) {
         this.radius = radius;
         this.loop = trackLoop;
         this.path = trackLoop.getPath();
+        this.startingRay = new Ray2(this.loop.at(startingT), Angle.fromVec2(this.loop.derivativeAt(startingT)));
     }
     // Whether the given point is on the track.
     Track.prototype.containsPoint = function (p) {
@@ -40,6 +42,17 @@ var Track = /** @class */ (function () {
                 frame.lineTo(section.end.x, section.end.y);
                 ctx.stroke(frame);
             }
+            var startingVectorPath = new Path2D();
+            startingVectorPath.moveTo(this.startingRay.origin.x, this.startingRay.origin.y);
+            var end = this.startingRay.origin.plus(Vec2.fromPolar(100.0, this.startingRay.angle));
+            startingVectorPath.lineTo(end.x, end.y);
+            ctx.strokeStyle = "blue";
+            ctx.lineWidth = 2;
+            ctx.stroke(startingVectorPath);
+            var originPath = new Path2D();
+            originPath.ellipse(this.startingRay.origin.x, this.startingRay.origin.y, 5, 5, 0, 0, TAU);
+            ctx.fillStyle = "blue";
+            ctx.fill(originPath);
         }
     };
     return Track;

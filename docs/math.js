@@ -148,6 +148,14 @@ var Angle = /** @class */ (function () {
     return Angle;
 }());
 export { Angle };
+var Ray2 = /** @class */ (function () {
+    function Ray2(origin, angle) {
+        this.origin = origin;
+        this.angle = angle;
+    }
+    return Ray2;
+}());
+export { Ray2 };
 var CubicBezier = /** @class */ (function () {
     function CubicBezier(start, end, cp1, cp2) {
         this.start = start;
@@ -161,6 +169,15 @@ var CubicBezier = /** @class */ (function () {
             .plus(this.cp1.times(3 * (1 - t) * (1 - t) * t))
             .plus(this.cp2.times(3 * (1 - t) * t * t))
             .plus(this.end.times(t * t * t));
+    };
+    // The derivative of the curve at the given t in [0, 1].
+    CubicBezier.prototype.derivativeAt = function (t) {
+        return this.start.times(-3 * (1 - t) * (1 - t))
+            .plus(this.cp1.times(3 * (1 - t) * (1 - t)))
+            .minus(this.cp1.times(6 * t * (1 - t)))
+            .minus(this.cp2.times(3 * t * t))
+            .plus(this.cp2.times(6 * t * (1 - t)))
+            .plus(this.end.times(3 * t * t));
     };
     // The point on this Bezier curve closest to the given point, based on
     // sampling. The number of samples must be a positive integer.
