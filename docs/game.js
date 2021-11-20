@@ -51,8 +51,6 @@ var Game = /** @class */ (function () {
         });
         // Update loop
         window.setInterval(this.update.bind(this), MS_PER_UPDATE);
-        // Render loop
-        window.requestAnimationFrame(this.draw.bind(this));
     }
     Game.prototype.update = function () {
         this.controller.update(this.kart, this.camera);
@@ -67,14 +65,15 @@ var Game = /** @class */ (function () {
                 ++this.subLaps;
                 break;
         }
-        while (this.subLaps >= COURSE_ZONES) {
+        if (this.subLaps >= COURSE_ZONES) {
             this.subLaps -= COURSE_ZONES;
             ++this.laps;
         }
-        while (this.subLaps < -COURSE_ZONES) {
+        else if (this.subLaps < -COURSE_ZONES) {
             this.subLaps += COURSE_ZONES;
         }
         this.lastZone = zone;
+        window.requestAnimationFrame(this.draw.bind(this));
     };
     Game.prototype.draw = function (_timestamp) {
         // Clear the drawing.
@@ -89,7 +88,6 @@ var Game = /** @class */ (function () {
         // Restore the ctx state to undo the camera transform and draw the UI.
         ctx.restore();
         this.drawUI();
-        window.requestAnimationFrame(this.draw.bind(this));
     };
     Game.prototype.drawWorld = function () {
         this.course.drawWorld(ctx, this.debug);

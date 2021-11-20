@@ -60,11 +60,8 @@ class Game {
 			}
 		});
 
-		// Update loop
+		// Start the update loop.
 		window.setInterval(this.update.bind(this), MS_PER_UPDATE);
-
-		// Render loop
-		window.requestAnimationFrame(this.draw.bind(this));
 	}
 
 	update() {
@@ -88,6 +85,8 @@ class Game {
 			this.subLaps += COURSE_ZONES;
 		}
 		this.lastZone = zone;
+
+		window.requestAnimationFrame(this.draw.bind(this));
 	}
 
 	draw(_timestamp: DOMHighResTimeStamp) {
@@ -105,8 +104,6 @@ class Game {
 		// Restore the ctx state to undo the camera transform and draw the UI.
 		ctx.restore();
 		this.drawUI();
-
-		window.requestAnimationFrame(this.draw.bind(this));
 	}
 
 	private drawWorld() {
