@@ -49,7 +49,7 @@ var Game = /** @class */ (function () {
                     }
             }
         });
-        // Update loop
+        // Start the update loop.
         window.setInterval(this.update.bind(this), MS_PER_UPDATE);
     }
     Game.prototype.update = function () {
