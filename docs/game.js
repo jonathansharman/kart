@@ -2,61 +2,67 @@ import { Controller, ControlMode, Device } from "./control.js";
 import { COURSE_ZONES, TEST_COURSES } from "./course.js";
 import { Kart } from "./kart.js";
 import { mod, Vec2 } from "./math.js";
-var canvas = document.getElementById("canvas");
-var ctx = canvas.getContext("2d");
-var UPDATES_PER_SEC = 60.0;
-var MS_PER_UPDATE = 1000.0 / UPDATES_PER_SEC;
-var Game = /** @class */ (function () {
-    function Game() {
-        var _this = this;
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const UPDATES_PER_SEC = 60.0;
+const MS_PER_FRAME = 1000.0 / UPDATES_PER_SEC;
+class Game {
+    constructor() {
         this.debug = false;
         this.courseIdx = 3;
         this.course = TEST_COURSES[this.courseIdx];
         this.lastZone = 0;
         this.subLaps = 0;
         this.laps = 0;
+        this.currentLapFrames = 0;
+        this.totalFrames = 0;
+        this.lapFrames = [];
         this.controller = new Controller(Device.Gamepad, ControlMode.Follow);
         this.camera = new Vec2(0.0, 0.0);
-        var startingRay = this.course.track.startingRay;
+        const startingRay = this.course.track.startingRay;
         this.kart = new Kart(startingRay.origin, startingRay.angle);
         // Add debug event listeners.
-        window.addEventListener("keydown", function (event) {
+        window.addEventListener("keydown", (event) => {
             switch (event.code) {
                 case "KeyD":
-                    _this.debug = !_this.debug;
+                    this.debug = !this.debug;
                     return false;
                 case "ArrowLeft":
-                    {
-                        _this.courseIdx = mod(_this.courseIdx - 1, TEST_COURSES.length);
-                        _this.course = TEST_COURSES[_this.courseIdx];
-                        var startingRay_1 = _this.course.track.startingRay;
-                        _this.kart = new Kart(startingRay_1.origin, startingRay_1.angle);
-                        _this.lastZone = 0;
-                        _this.subLaps = 0;
-                        _this.laps = 0;
-                        return false;
-                    }
+                    this.courseIdx = mod(this.courseIdx - 1, TEST_COURSES.length);
+                    this.course = TEST_COURSES[this.courseIdx];
+                    this.reset();
+                    return false;
                 case "ArrowRight":
-                    {
-                        _this.courseIdx = mod(_this.courseIdx + 1, TEST_COURSES.length);
-                        _this.course = TEST_COURSES[_this.courseIdx];
-                        var startingRay_2 = _this.course.track.startingRay;
-                        _this.kart = new Kart(startingRay_2.origin, startingRay_2.angle);
-                        _this.lastZone = 0;
-                        _this.subLaps = 0;
-                        _this.laps = 0;
-                        return false;
-                    }
+                    this.courseIdx = mod(this.courseIdx + 1, TEST_COURSES.length);
+                    this.course = TEST_COURSES[this.courseIdx];
+                    this.reset();
+                    return false;
             }
         });
         // Start the update loop.
-        window.setInterval(this.update.bind(this), MS_PER_UPDATE);
+        window.setInterval(this.update.bind(this), MS_PER_FRAME);
     }
-    Game.prototype.update = function () {
+    reset() {
+        const startingRay = this.course.track.startingRay;
+        this.kart = new Kart(startingRay.origin, startingRay.angle);
+        this.lastZone = 0;
+        this.subLaps = 0;
+        this.laps = 0;
+        this.currentLapFrames = 0;
+        this.totalFrames = 0;
+        this.lapFrames = [];
+    }
+    update() {
         this.controller.update(this.kart, this.camera);
         this.kart.update(this.course);
         this.camera = this.kart.getPos();
-        var zone = this.course.zone(this.kart.getPos());
+        if (this.laps < this.course.laps) {
+            this.updateLaps();
+        }
+        window.requestAnimationFrame(this.draw.bind(this));
+    }
+    updateLaps() {
+        const zone = this.course.zone(this.kart.getPos());
         switch ((zone - this.lastZone + COURSE_ZONES) % COURSE_ZONES) {
             case COURSE_ZONES - 1:
                 --this.subLaps;
@@ -67,15 +73,18 @@ var Game = /** @class */ (function () {
         }
         if (this.subLaps >= COURSE_ZONES) {
             this.subLaps -= COURSE_ZONES;
+            this.lapFrames.push(this.currentLapFrames);
+            this.currentLapFrames = 0;
             ++this.laps;
         }
         else if (this.subLaps < -COURSE_ZONES) {
             this.subLaps += COURSE_ZONES;
         }
         this.lastZone = zone;
-        window.requestAnimationFrame(this.draw.bind(this));
-    };
-    Game.prototype.draw = function (_timestamp) {
+        ++this.currentLapFrames;
+        ++this.totalFrames;
+    }
+    draw(_timestamp) {
         // Clear the drawing.
         ctx.fillStyle = "rgb(30, 100, 40)";
         ctx.beginPath();
@@ -88,17 +97,34 @@ var Game = /** @class */ (function () {
         // Restore the ctx state to undo the camera transform and draw the UI.
         ctx.restore();
         this.drawUI();
-    };
-    Game.prototype.drawWorld = function () {
+    }
+    drawWorld() {
         this.course.drawWorld(ctx, this.debug);
         this.kart.draw(ctx, this.debug);
-    };
-    Game.prototype.drawUI = function () {
+    }
+    drawUI() {
         this.course.drawUI(ctx, this.debug);
         this.controller.drawUI(ctx, this.debug);
+        // Draw total time and lap times.
+        ctx.font = "24pt monospace";
+        ctx.fillStyle = "white";
+        ctx.textAlign = "right";
+        ctx.fillText(framesToTimeString(this.totalFrames), canvas.width - 10, 30);
+        ctx.font = "16pt monospace";
+        ctx.fillStyle = "rgb(190, 190, 190)";
+        for (let i = 0; i < this.lapFrames.length; ++i) {
+            ctx.fillText((i + 1) + "| " + framesToTimeString(this.lapFrames[i]), canvas.width - 10, 55 + 25 * i);
+        }
+        // Draw lap count.
+        ctx.font = "36pt sans-serif";
+        ctx.fillStyle = "white";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "bottom";
+        ctx.fillText((this.laps + 1) + "/" + this.course.laps, 10, canvas.height);
         if (this.debug) {
             ctx.font = "20pt serif";
-            var trackText = void 0;
+            ctx.textBaseline = "alphabetic";
+            let trackText;
             if (this.course.track.containsPoint(this.kart.getPos())) {
                 ctx.fillStyle = "cyan";
                 trackText = "On track";
@@ -112,18 +138,21 @@ var Game = /** @class */ (function () {
             ctx.fillText("Zone " + this.course.zone(this.kart.getPos()), 10, 110);
             ctx.fillStyle = "black";
             ctx.fillText("Sublaps " + this.subLaps, 10, 150);
-            ctx.fillStyle = "black";
-            ctx.fillText("Laps " + this.laps, 10, 190);
         }
-    };
-    return Game;
-}());
+    }
+}
+const framesToTimeString = (frames) => {
+    const totalS = frames * MS_PER_FRAME / 1000;
+    const s = totalS % 60;
+    const m = Math.floor(totalS / 60);
+    return m + ":" + s.toFixed(3).padStart(6, "0");
+};
 // Disable context menu on right-click.
-window.oncontextmenu = function () { return false; };
+window.oncontextmenu = () => false;
 // Make the canvas fill the window.
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
-window.addEventListener("resize", function () {
+window.addEventListener("resize", () => {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     return false;

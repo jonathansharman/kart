@@ -1,17 +1,17 @@
 import { Angle, clamp, mapToRange, TAU, Vec2 } from "./math.js";
-var canvas = document.getElementById("canvas");
-var MAX_STEERING_ANGLE = Math.PI / 6.0; // TODO: This should go in Kart.
+const canvas = document.getElementById("canvas");
+const MAX_STEERING_ANGLE = Math.PI / 6.0; // TODO: This should go in Kart.
 // Mouse + axes control scheme constants
-var CONTROL_AREA_WIDTH = 400.0;
-var CONTROL_AREA_HEIGHT = 300.0;
-var DEAD_AREA_WIDTH = 75.0;
-var STEERING_WIDTH = 0.5 * (CONTROL_AREA_WIDTH - DEAD_AREA_WIDTH);
+const CONTROL_AREA_WIDTH = 400.0;
+const CONTROL_AREA_HEIGHT = 300.0;
+const DEAD_AREA_WIDTH = 75.0;
+const STEERING_WIDTH = 0.5 * (CONTROL_AREA_WIDTH - DEAD_AREA_WIDTH);
 // Mouse + follow control scheme constants
-var MIN_SPEED_DISTANCE = 60.0;
-var MAX_SPEED_DISTANCE = 225.0;
+const MIN_SPEED_DISTANCE = 60.0;
+const MAX_SPEED_DISTANCE = 225.0;
 // Gamepad constants
-var STICK_DEAD_RADIUS = 0.25;
-var STICK_STEERING_DRAG = 0.95;
+const STICK_DEAD_RADIUS = 0.25;
+const STICK_STEERING_DRAG = 0.95;
 export var Device;
 (function (Device) {
     Device[Device["Mouse"] = 0] = "Mouse";
@@ -22,19 +22,18 @@ export var ControlMode;
     ControlMode[ControlMode["Axes"] = 0] = "Axes";
     ControlMode[ControlMode["Follow"] = 1] = "Follow";
 })(ControlMode || (ControlMode = {}));
-var Controller = /** @class */ (function () {
-    function Controller(device, mode) {
-        var _this = this;
+export class Controller {
+    constructor(device, mode) {
         this.mousePosClient = new Vec2(0.0, 0.0);
         this.device = device;
         this.mode = mode;
         // Mouse events
-        window.addEventListener("mousemove", function (event) {
-            var rect = canvas.getBoundingClientRect();
-            _this.mousePosClient.x = event.clientX - rect.left;
-            _this.mousePosClient.y = event.clientY - rect.top;
+        window.addEventListener("mousemove", (event) => {
+            const rect = canvas.getBoundingClientRect();
+            this.mousePosClient.x = event.clientX - rect.left;
+            this.mousePosClient.y = event.clientY - rect.top;
         });
-        window.addEventListener("mousedown", function (event) {
+        window.addEventListener("mousedown", (event) => {
             switch (event.button) {
                 case 0: // Left button
                     return false;
@@ -42,7 +41,7 @@ var Controller = /** @class */ (function () {
                     return false;
             }
         });
-        window.addEventListener("mouseup", function (event) {
+        window.addEventListener("mouseup", (event) => {
             event.preventDefault();
             switch (event.button) {
                 case 0: // Left button
@@ -52,7 +51,7 @@ var Controller = /** @class */ (function () {
             }
         });
         // Keyboard events
-        window.addEventListener("keydown", function (event) {
+        window.addEventListener("keydown", (event) => {
             switch (event.code) {
                 case "Digit1":
                     return false;
@@ -60,7 +59,7 @@ var Controller = /** @class */ (function () {
                     return false;
             }
         });
-        window.addEventListener("keyup", function (event) {
+        window.addEventListener("keyup", (event) => {
             event.preventDefault();
             switch (event.code) {
                 case "Digit1":
@@ -70,9 +69,9 @@ var Controller = /** @class */ (function () {
             }
         });
     }
-    Controller.prototype.update = function (kart, camera) {
+    update(kart, camera) {
         // For now, determine device only by whether the gamepad is disconnected.
-        var gamepad = navigator.getGamepads()[0];
+        const gamepad = navigator.getGamepads()[0];
         if (gamepad) {
             this.device = Device.Gamepad;
         }
@@ -84,14 +83,14 @@ var Controller = /** @class */ (function () {
                 switch (this.mode) {
                     case ControlMode.Axes:
                         {
-                            var controlAreaTop = 0.5 * (canvas.height - CONTROL_AREA_HEIGHT);
-                            var controlAreaBottom = controlAreaTop + CONTROL_AREA_HEIGHT;
-                            var deadAreaLeft = 0.5 * (canvas.width - DEAD_AREA_WIDTH);
-                            var deadAreaRight = deadAreaLeft + DEAD_AREA_WIDTH;
+                            const controlAreaTop = 0.5 * (canvas.height - CONTROL_AREA_HEIGHT);
+                            const controlAreaBottom = controlAreaTop + CONTROL_AREA_HEIGHT;
+                            const deadAreaLeft = 0.5 * (canvas.width - DEAD_AREA_WIDTH);
+                            const deadAreaRight = deadAreaLeft + DEAD_AREA_WIDTH;
                             // Left steering: 0 (right) to 1 (left)
-                            var leftSteering = clamp((deadAreaLeft - this.mousePosClient.x) / STEERING_WIDTH, 0.0, 1.0);
+                            const leftSteering = clamp((deadAreaLeft - this.mousePosClient.x) / STEERING_WIDTH, 0.0, 1.0);
                             // Right steering: 0 (left) to 1 (right)
-                            var rightSteering = clamp((this.mousePosClient.x - deadAreaRight) / STEERING_WIDTH, 0.0, 1.0);
+                            const rightSteering = clamp((this.mousePosClient.x - deadAreaRight) / STEERING_WIDTH, 0.0, 1.0);
                             // Gas: 0 (bottom) to 1 (top)
                             kart.gas = clamp((controlAreaBottom - this.mousePosClient.y) / CONTROL_AREA_HEIGHT, 0.0, 1.0);
                             // Steering
@@ -100,12 +99,12 @@ var Controller = /** @class */ (function () {
                         break;
                     case ControlMode.Follow:
                         {
-                            var mousePosWorld = this.mousePosClient
+                            const mousePosWorld = this.mousePosClient
                                 .plus(camera)
                                 .minus(new Vec2(0.5 * canvas.width, 0.5 * canvas.height));
-                            var offset = mousePosWorld.minus(kart.getPos());
-                            var angle = Angle.fromVec2(offset);
-                            var distance = offset.length();
+                            const offset = mousePosWorld.minus(kart.getPos());
+                            const angle = Angle.fromVec2(offset);
+                            const distance = offset.length();
                             kart.gas = mapToRange(clamp(distance, MIN_SPEED_DISTANCE, MAX_SPEED_DISTANCE), [MIN_SPEED_DISTANCE, MAX_SPEED_DISTANCE], [0.0, 1.0]);
                             kart.steering = clamp(kart.getHeading().smallestAngleTo(angle).getNegativePiToPi(), -MAX_STEERING_ANGLE, MAX_STEERING_ANGLE);
                         }
@@ -118,7 +117,7 @@ var Controller = /** @class */ (function () {
                         kart.gas = gamepad.buttons[7].value;
                         kart.brake = gamepad.buttons[6].value;
                         // Steering
-                        var steeringAbs = MAX_STEERING_ANGLE * mapToRange(Math.abs(gamepad.axes[0]), [STICK_DEAD_RADIUS, 1.0], [0.0, 1.0]);
+                        const steeringAbs = MAX_STEERING_ANGLE * mapToRange(Math.abs(gamepad.axes[0]), [STICK_DEAD_RADIUS, 1.0], [0.0, 1.0]);
                         if (gamepad.axes[0] < -STICK_DEAD_RADIUS) {
                             kart.steering = -steeringAbs;
                         }
@@ -131,11 +130,11 @@ var Controller = /** @class */ (function () {
                         break;
                     case ControlMode.Follow:
                         {
-                            var offset = new Vec2(gamepad.axes[0], gamepad.axes[1]);
-                            var angle = Angle.fromVec2(offset);
-                            var length_1 = offset.length();
-                            if (length_1 > STICK_DEAD_RADIUS) {
-                                kart.gas = mapToRange(length_1, [STICK_DEAD_RADIUS, 1.0], [0.0, 1.0]);
+                            const offset = new Vec2(gamepad.axes[0], gamepad.axes[1]);
+                            const angle = Angle.fromVec2(offset);
+                            const length = offset.length();
+                            if (length > STICK_DEAD_RADIUS) {
+                                kart.gas = mapToRange(length, [STICK_DEAD_RADIUS, 1.0], [0.0, 1.0]);
                                 kart.steering = clamp(kart.getHeading().smallestAngleTo(angle).getNegativePiToPi(), -MAX_STEERING_ANGLE, MAX_STEERING_ANGLE);
                             }
                             else {
@@ -147,8 +146,8 @@ var Controller = /** @class */ (function () {
                 }
                 break;
         }
-    };
-    Controller.prototype.drawUI = function (ctx, debug) {
+    }
+    drawUI(ctx, debug) {
         // Draw control area when in MouseAxes control mode.
         if (this.device == Device.Mouse) {
             switch (this.mode) {
@@ -179,7 +178,5 @@ var Controller = /** @class */ (function () {
                     break;
             }
         }
-    };
-    return Controller;
-}());
-export { Controller };
+    }
+}

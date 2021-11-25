@@ -1,200 +1,187 @@
 // Supplementary math utilities.
-export var TAU = 2 * Math.PI;
-export var clamp = function (n, min, max) {
+export const TAU = 2 * Math.PI;
+export const clamp = (n, min, max) => {
     return Math.max(min, Math.min(max, n));
 };
 // Maps n in domain [min, max] linearly to range [min, max].
-export var mapToRange = function (n, domain, range) {
+export const mapToRange = (n, domain, range) => {
     return range[0] + (n - domain[0]) / (domain[1] - domain[0]) * range[1];
 };
 // Mathematical modulus. 0 <= (x mod m) < m for m > 0.
-export var mod = function (x, m) {
+export const mod = (x, m) => {
     return (x % m + m) % m;
 };
 // 2D vector.
-var Vec2 = /** @class */ (function () {
-    function Vec2(x, y) {
+export class Vec2 {
+    constructor(x, y) {
         this.x = x;
         this.y = y;
     }
-    Vec2.fromPolar = function (length, angle) {
+    static fromPolar(length, angle) {
         return new Vec2(angle.cos(), angle.sin()).times(length);
-    };
-    Vec2.prototype.length2 = function () {
+    }
+    length2() {
         return this.x * this.x + this.y * this.y;
-    };
-    Vec2.prototype.length = function () {
+    }
+    length() {
         return Math.sqrt(this.length2());
-    };
-    Vec2.prototype.normalized = function () {
+    }
+    normalized() {
         return this.dividedBy(this.length());
-    };
-    Vec2.prototype.normalizedTo = function (length) {
+    }
+    normalizedTo(length) {
         return this.times(length).dividedBy(this.length());
-    };
-    Vec2.prototype.plus = function (that) {
+    }
+    plus(that) {
         return new Vec2(this.x + that.x, this.y + that.y);
-    };
-    Vec2.prototype.minus = function (that) {
+    }
+    minus(that) {
         return new Vec2(this.x - that.x, this.y - that.y);
-    };
-    Vec2.prototype.times = function (factor) {
+    }
+    times(factor) {
         return new Vec2(this.x * factor, this.y * factor);
-    };
-    Vec2.prototype.dividedBy = function (divisor) {
+    }
+    dividedBy(divisor) {
         return new Vec2(this.x / divisor, this.y / divisor);
-    };
-    Vec2.prototype.negated = function () {
+    }
+    negated() {
         return new Vec2(-this.x, -this.y);
-    };
-    Vec2.prototype.dot = function (that) {
+    }
+    dot(that) {
         return this.x * that.x + this.y * that.y;
-    };
-    Vec2.prototype.rotated = function (radians) {
-        var cos = Math.cos(radians);
-        var sin = Math.sin(radians);
+    }
+    rotated(radians) {
+        const cos = Math.cos(radians);
+        const sin = Math.sin(radians);
         return new Vec2(this.x * cos - this.y * sin, this.x * sin + this.y * cos);
-    };
-    Vec2.prototype.rotatedQuarter = function () {
+    }
+    rotatedQuarter() {
         return new Vec2(-this.y, this.x);
-    };
-    Vec2.prototype.rotatedThreeQuarters = function () {
+    }
+    rotatedThreeQuarters() {
         return new Vec2(this.y, -this.x);
-    };
+    }
     // A new Vec2 in the same direction as this Vec2 with length extended the
     // given amount. Undefined for the zero vector. Negative extension is
     // supported.
-    Vec2.prototype.extended = function (extension) {
-        var l = this.length();
+    extended(extension) {
+        let l = this.length();
         return this.times(l + extension).dividedBy(l);
-    };
-    return Vec2;
-}());
-export { Vec2 };
+    }
+}
 // 2D line segment from start to end.
-var Segment2 = /** @class */ (function () {
-    function Segment2(start, end) {
+export class Segment2 {
+    constructor(start, end) {
         this.start = start;
         this.end = end;
         this.offset = end.minus(start);
     }
     // The square of the shortest distance from this segment to point p.
-    Segment2.prototype.pointDistance2 = function (p) {
+    pointDistance2(p) {
         if (this.start === this.end) {
             return p.minus(this.start).length2();
         }
-        var t = clamp(p.minus(this.start).dot(this.offset) / this.offset.length2(), 0.0, 1.0);
+        const t = clamp(p.minus(this.start).dot(this.offset) / this.offset.length2(), 0.0, 1.0);
         return p.minus(this.start.plus(this.offset.times(t))).length2();
-    };
-    return Segment2;
-}());
-export { Segment2 };
-var Disk = /** @class */ (function () {
-    function Disk(center, radius) {
+    }
+}
+export class Disk {
+    constructor(center, radius) {
         this.center = center;
         this.radius = radius;
     }
-    return Disk;
-}());
-export { Disk };
+}
 // Maintains an angle in radians, normalized to [0, tau).
-var Angle = /** @class */ (function () {
-    function Angle(radians) {
+export class Angle {
+    constructor(radians) {
         this.radians = mod(radians, TAU);
     }
     // An angle in the direction of v.
-    Angle.fromVec2 = function (v) {
+    static fromVec2(v) {
         return new Angle(Math.atan2(v.y, v.x));
-    };
+    }
     // The angle in radians in [0, tau).
-    Angle.prototype.get = function () {
+    get() {
         return this.radians;
-    };
+    }
     // The angle in radians in [-pi, pi).
-    Angle.prototype.getNegativePiToPi = function () {
+    getNegativePiToPi() {
         //return this.radians > Math.PI ? -Math.PI + this.radians % Math.PI : this.radians;
         return this.radians > Math.PI ? this.radians - TAU : this.radians;
-    };
-    Angle.prototype.sin = function () {
+    }
+    sin() {
         return Math.sin(this.radians);
-    };
-    Angle.prototype.cos = function () {
+    }
+    cos() {
         return Math.cos(this.radians);
-    };
-    Angle.prototype.tan = function () {
+    }
+    tan() {
         return Math.tan(this.radians);
-    };
-    Angle.prototype.plus = function (radians) {
+    }
+    plus(radians) {
         return new Angle(this.radians + radians);
-    };
-    Angle.prototype.minus = function (radians) {
+    }
+    minus(radians) {
         return new Angle(this.radians - radians);
-    };
-    Angle.prototype.times = function (factor) {
+    }
+    times(factor) {
         return new Angle(this.radians * factor);
-    };
-    Angle.prototype.dividedBy = function (divisor) {
+    }
+    dividedBy(divisor) {
         return new Angle(this.radians / divisor);
-    };
-    Angle.prototype.negated = function () {
+    }
+    negated() {
         return new Angle(-this.radians);
-    };
+    }
     // The most acute angle that when added to this is equal to target.
-    Angle.prototype.smallestAngleTo = function (target) {
-        var a = mod(target.radians - this.radians, TAU);
-        var b = mod(this.radians - target.radians, TAU);
+    smallestAngleTo(target) {
+        const a = mod(target.radians - this.radians, TAU);
+        const b = mod(this.radians - target.radians, TAU);
         return new Angle(a < b ? a : -b);
-    };
-    return Angle;
-}());
-export { Angle };
-var Ray2 = /** @class */ (function () {
-    function Ray2(origin, angle) {
+    }
+}
+export class Ray2 {
+    constructor(origin, angle) {
         this.origin = origin;
         this.angle = angle;
     }
-    return Ray2;
-}());
-export { Ray2 };
-var CubicBezier = /** @class */ (function () {
-    function CubicBezier(start, end, cp1, cp2) {
+}
+export class CubicBezier {
+    constructor(start, end, cp1, cp2) {
         this.start = start;
         this.end = end;
         this.cp1 = cp1;
         this.cp2 = cp2;
     }
     // The point on the curve at the given t in [0, 1].
-    CubicBezier.prototype.at = function (t) {
+    at(t) {
         return this.start.times((1 - t) * (1 - t) * (1 - t))
             .plus(this.cp1.times(3 * (1 - t) * (1 - t) * t))
             .plus(this.cp2.times(3 * (1 - t) * t * t))
             .plus(this.end.times(t * t * t));
-    };
+    }
     // The derivative of the curve at the given t in [0, 1].
-    CubicBezier.prototype.derivativeAt = function (t) {
+    derivativeAt(t) {
         return this.start.times(-3 * (1 - t) * (1 - t))
             .plus(this.cp1.times(3 * (1 - t) * (1 - t)))
             .minus(this.cp1.times(6 * t * (1 - t)))
             .minus(this.cp2.times(3 * t * t))
             .plus(this.cp2.times(6 * t * (1 - t)))
             .plus(this.end.times(3 * t * t));
-    };
+    }
     // The point on this Bezier curve closest to the given point, based on
     // sampling. The number of samples must be a positive integer.
-    CubicBezier.prototype.projectPoint = function (p, sampleCount) {
-        if (sampleCount === void 0) { sampleCount = 100; }
-        var minD2 = Infinity;
-        var closest;
-        for (var i = 0; i < sampleCount; ++i) {
-            var q = this.at(i / (sampleCount - 1));
-            var d2 = q.minus(p).length2();
+    projectPoint(p, sampleCount = 100) {
+        let minD2 = Infinity;
+        let closest;
+        for (let i = 0; i < sampleCount; ++i) {
+            const q = this.at(i / (sampleCount - 1));
+            const d2 = q.minus(p).length2();
             if (d2 < minD2) {
                 minD2 = d2;
                 closest = q;
             }
         }
         return closest;
-    };
-    return CubicBezier;
-}());
-export { CubicBezier };
+    }
+}
