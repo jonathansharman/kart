@@ -120,7 +120,12 @@ class Game {
         ctx.fillStyle = "white";
         ctx.textAlign = "left";
         ctx.textBaseline = "bottom";
-        ctx.fillText((this.laps + 1) + "/" + this.course.laps, 10, canvas.height);
+        if (this.laps < this.course.laps) {
+            ctx.fillText((this.laps + 1) + "/" + this.course.laps, 10, canvas.height);
+        }
+        else {
+            ctx.fillText("🏁/" + this.course.laps, 10, canvas.height);
+        }
         if (this.debug) {
             ctx.font = "20pt serif";
             ctx.textBaseline = "alphabetic";
