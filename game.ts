@@ -7,7 +7,7 @@ const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d");
 
 const UPDATES_PER_SEC = 60.0;
-const MS_PER_UPDATE = 1000.0 / UPDATES_PER_SEC;
+const MS_PER_FRAME = 1000.0 / UPDATES_PER_SEC;
 
 class Game {
 	private debug: boolean = false;
@@ -20,6 +20,9 @@ class Game {
 	private lastZone: number = 0;
 	private subLaps: number = 0;
 	private laps: number = 0;
+	private currentLapFrames: number = 0;
+	private totalFrames: number = 0;
+	private lapFrames: number[] = [];
 
 	private controller: Controller = new Controller(Device.Gamepad, ControlMode.Follow);
 
@@ -36,32 +39,31 @@ class Game {
 					this.debug = !this.debug;
 					return false;
 				case "ArrowLeft":
-					{
-						this.courseIdx = mod(this.courseIdx - 1, TEST_COURSES.length);
-						this.course = TEST_COURSES[this.courseIdx];
-						const startingRay = this.course.track.startingRay;
-						this.kart = new Kart(startingRay.origin, startingRay.angle);
-						this.lastZone = 0;
-						this.subLaps = 0;
-						this.laps = 0;
-						return false;
-					}
+					this.courseIdx = mod(this.courseIdx - 1, TEST_COURSES.length);
+					this.course = TEST_COURSES[this.courseIdx];
+					this.reset();
+					return false;
 				case "ArrowRight":
-					{
-						this.courseIdx = mod(this.courseIdx + 1, TEST_COURSES.length);
-						this.course = TEST_COURSES[this.courseIdx];
-						const startingRay = this.course.track.startingRay;
-						this.kart = new Kart(startingRay.origin, startingRay.angle);
-						this.lastZone = 0;
-						this.subLaps = 0;
-						this.laps = 0;
-						return false;
-					}
+					this.courseIdx = mod(this.courseIdx + 1, TEST_COURSES.length);
+					this.course = TEST_COURSES[this.courseIdx];
+					this.reset();
+					return false;
 			}
 		});
 
 		// Start the update loop.
-		window.setInterval(this.update.bind(this), MS_PER_UPDATE);
+		window.setInterval(this.update.bind(this), MS_PER_FRAME);
+	}
+
+	reset() {
+		const startingRay = this.course.track.startingRay;
+		this.kart = new Kart(startingRay.origin, startingRay.angle);
+		this.lastZone = 0;
+		this.subLaps = 0;
+		this.laps = 0;
+		this.currentLapFrames = 0;
+		this.totalFrames = 0;
+		this.lapFrames = [];
 	}
 
 	update() {
@@ -69,6 +71,14 @@ class Game {
 		this.kart.update(this.course);
 		this.camera = this.kart.getPos();
 
+		if (this.laps < this.course.laps) {
+			this.updateLaps();
+		}
+
+		window.requestAnimationFrame(this.draw.bind(this));
+	}
+
+	private updateLaps() {
 		const zone = this.course.zone(this.kart.getPos());
 		switch ((zone - this.lastZone + COURSE_ZONES) % COURSE_ZONES) {
 			case COURSE_ZONES - 1:
@@ -80,13 +90,16 @@ class Game {
 		}
 		if (this.subLaps >= COURSE_ZONES) {
 			this.subLaps -= COURSE_ZONES;
+			this.lapFrames.push(this.currentLapFrames);
+			this.currentLapFrames = 0;
 			++this.laps;
 		} else if (this.subLaps < -COURSE_ZONES) {
 			this.subLaps += COURSE_ZONES;
 		}
 		this.lastZone = zone;
 
-		window.requestAnimationFrame(this.draw.bind(this));
+		++this.currentLapFrames;
+		++this.totalFrames;
 	}
 
 	draw(_timestamp: DOMHighResTimeStamp) {
@@ -117,8 +130,27 @@ class Game {
 
 		this.controller.drawUI(ctx, this.debug);
 
+		// Draw total time and lap times.
+		ctx.font = "24pt monospace";
+		ctx.fillStyle = "white";
+		ctx.textAlign = "right";
+		ctx.fillText(framesToTimeString(this.totalFrames), canvas.width - 10, 30);
+		ctx.font = "16pt monospace";
+		ctx.fillStyle = "rgb(190, 190, 190)";
+		for (let i = 0; i < this.lapFrames.length; ++i) {
+			ctx.fillText((i + 1) + "| " + framesToTimeString(this.lapFrames[i]), canvas.width - 10, 55 + 25 * i);
+		}
+
+		// Draw lap count.
+		ctx.font = "36pt sans-serif";
+		ctx.fillStyle = "white";
+		ctx.textAlign = "left";
+		ctx.textBaseline = "bottom";
+		ctx.fillText((this.laps + 1) + "/" + this.course.laps, 10, canvas.height);
+
 		if (this.debug) {
 			ctx.font = "20pt serif";
+			ctx.textBaseline = "alphabetic";
 
 			let trackText;
 			if (this.course.track.containsPoint(this.kart.getPos())) {
@@ -135,11 +167,15 @@ class Game {
 
 			ctx.fillStyle = "black";
 			ctx.fillText("Sublaps " + this.subLaps, 10, 150);
-
-			ctx.fillStyle = "black";
-			ctx.fillText("Laps " + this.laps, 10, 190);
 		}
 	}
+}
+
+const framesToTimeString = (frames: number): string => {
+	const totalS = frames * MS_PER_FRAME / 1000;
+	const s = totalS % 60;
+	const m = Math.floor(totalS / 60);
+	return m + ":" + s.toFixed(3).padStart(6, "0");
 }
 
 // Disable context menu on right-click.

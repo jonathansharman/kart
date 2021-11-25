@@ -6,14 +6,16 @@ import { Wall } from "./wall.js";
 export const COURSE_ZONES = 3;
 
 export class Course {
-	name: string;
-	track: Track;
-	walls: Wall[];
+	readonly name: string;
+	readonly laps: number;
+	readonly track: Track;
+	readonly walls: Wall[];
 
 	private lapRay: Ray2;
 
-	constructor(name: string, originOffset: number, track: Track, walls: Wall[]) {
+	constructor(name: string, laps: number, originOffset: number, track: Track, walls: Wall[]) {
 		this.name = name;
+		this.laps = laps;
 		this.track = track;
 		this.walls = walls;
 
@@ -71,6 +73,7 @@ const TRACK_RADIUS = 50.0;
 export const TEST_COURSES: Course[] = [
 	new Course(
 		"Serpentine",
+		3,
 		500.0,
 		new Track(
 			TRACK_RADIUS,
@@ -94,6 +97,7 @@ export const TEST_COURSES: Course[] = [
 	),
 	new Course(
 		"Clockwise oval, tight turns",
+		10,
 		-100.0,
 		new Track(
 			TRACK_RADIUS,
@@ -116,6 +120,7 @@ export const TEST_COURSES: Course[] = [
 	),
 	new Course(
 		"Counter-clockwise oval",
+		10,
 		150.0,
 		new Track(
 			TRACK_RADIUS,
@@ -138,6 +143,7 @@ export const TEST_COURSES: Course[] = [
 	),
 	new Course(
 		"Clockwise big track, tight turns",
+		4,
 		-200.0,
 		new Track(
 			TRACK_RADIUS,
@@ -166,6 +172,7 @@ export const TEST_COURSES: Course[] = [
 	),
 	new Course(
 		"Counter-clockwise big track",
+		4,
 		400.0,
 		new Track(
 			TRACK_RADIUS,
@@ -194,6 +201,7 @@ export const TEST_COURSES: Course[] = [
 	),
 	new Course(
 		"Degenerate quad (triangle)",
+		1,
 		500.0,
 		new Track(
 			TRACK_RADIUS,
