@@ -2,6 +2,11 @@ import { Angle, Ray2, TAU, Vec2 } from "./math.js"
 import { SplineLoop } from "./spline.js";
 
 const TRACK_BORDER = 2.0;
+const STARTING_LINE_WIDTH = 5.0;
+const ARROW_FORWARD_OFFSET = -20.0;
+const ARROW_SIDE_OFFSET_FACTOR = 0.7;
+const ARROW_HALF_WIDTH = 4.0;
+const ARROW_LENGTH = 10.0;
 
 // Represents a track/course/level of the game. Consists of the track/road
 // itself and at least one wall.
@@ -11,16 +16,49 @@ export class Track {
 
 	private radius: number;
 	private loop: SplineLoop;
-	private path: Path2D;
+	private loopPath: Path2D;
+	private startingLinePath: Path2D;
+	private startingArrowPaths: Path2D[];
 
 	constructor(radius: number, startingT: number, trackLoop: SplineLoop) {
 		this.radius = radius;
 		this.loop = trackLoop;
-		this.path = trackLoop.getPath();
-		this.startingRay = new Ray2(
-			this.loop.at(startingT),
-			Angle.fromVec2(this.loop.derivativeAt(startingT)),
-		)
+		this.loopPath = trackLoop.getPath();
+
+		const startPos = this.loop.at(startingT);
+		const startDerivative = this.loop.derivativeAt(startingT);
+		this.startingRay = new Ray2(startPos, Angle.fromVec2(startDerivative));
+		// Initialize starting line and arrow paths.
+		{
+			const lineUnit = startDerivative.rotatedQuarter().normalized();
+			const lineOffset = lineUnit.times(radius - TRACK_BORDER);
+			const lineStart = startPos.plus(lineOffset);
+			const lineEnd = startPos.minus(lineOffset);
+			this.startingLinePath = new Path2D();
+			this.startingLinePath.moveTo(lineStart.x, lineStart.y);
+			this.startingLinePath.lineTo(lineEnd.x, lineEnd.y);
+
+			const startAngle = Angle.fromVec2(startDerivative);
+			this.startingArrowPaths = [];
+			const base = startPos.plus(startDerivative.normalizedTo(ARROW_FORWARD_OFFSET));
+			const lineSideOffset = lineOffset.times(ARROW_SIDE_OFFSET_FACTOR);
+			this.startingArrowPaths.push(this.getArrowPath(base.minus(lineSideOffset), startAngle));
+			this.startingArrowPaths.push(this.getArrowPath(base, startAngle));
+			this.startingArrowPaths.push(this.getArrowPath(base.plus(lineSideOffset), startAngle));
+		}
+	}
+
+	private getArrowPath(base: Vec2, angle: Angle): Path2D {
+		const path = new Path2D();
+		const perpendicular = angle.plus(0.25 * TAU);
+		const sideOffset = Vec2.fromPolar(ARROW_HALF_WIDTH, perpendicular);
+		const p0 = base.plus(Vec2.fromPolar(ARROW_LENGTH, angle));
+		const p1 = base.plus(sideOffset);
+		const p2 = base.minus(sideOffset);
+		path.moveTo(p0.x, p0.y);
+		path.lineTo(p1.x, p1.y);
+		path.lineTo(p2.x, p2.y);
+		return path;
 	}
 
 	// Whether the given point is on the track.
@@ -33,17 +71,25 @@ export class Track {
 		// Draw outline.
 		ctx.strokeStyle = "black";
 		ctx.lineWidth = 2 * this.radius;
-		ctx.stroke(this.path);
+		ctx.stroke(this.loopPath);
 		// Draw fill.
 		ctx.strokeStyle = "rgb(60, 60, 60)";
 		ctx.lineWidth = 2 * (this.radius - TRACK_BORDER);
-		ctx.stroke(this.path);
+		ctx.stroke(this.loopPath);
+		// Draw starting line.
+		ctx.strokeStyle = "white";
+		ctx.lineWidth = STARTING_LINE_WIDTH;
+		ctx.stroke(this.startingLinePath);
+		ctx.fillStyle = "white";
+		for (let arrowPath of this.startingArrowPaths) {
+			ctx.fill(arrowPath);
+		}
 
 		if (debug) {
 			// Draw the center of the path.
 			ctx.lineWidth = 1;
 			ctx.strokeStyle = "black";
-			ctx.stroke(this.path);
+			ctx.stroke(this.loopPath);
 
 			let even = true;
 			for (let section of this.loop.sections) {
